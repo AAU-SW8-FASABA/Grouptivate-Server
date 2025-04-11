@@ -1,0 +1,33 @@
+{
+  "dependencies": {
+    "@dotenvx/dotenvx": "^1.39.1",
+    "express": "^5.1.0",
+    "mongodb": "6.15"
+  },
+  "name": "grouptivate-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.ts",
+  "devDependencies": {
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.14.0",
+    "typescript": "^5.8.3"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "dev": "dotenvx run -- npx tsx src/index.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AAU-SW8-FASABA/Grouptivate-Server.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/AAU-SW8-FASABA/Grouptivate-Server/issues"
+  },
+  "homepage": "https://github.com/AAU-SW8-FASABA/Grouptivate-Server#readme"
+}
