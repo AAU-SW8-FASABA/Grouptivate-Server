@@ -15,8 +15,8 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc",
-    "dev": "dotenvx run -- npx tsx src/index.ts"
+    "build": "npx tsc",
+    "dev": "dotenvx run -- npx tsx index.ts"
   },
   "repository": {
     "type": "git",
