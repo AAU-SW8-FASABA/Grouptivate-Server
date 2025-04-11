@@ -1,0 +1,3 @@
+[submodule "Grouptivate-API"]
+	path = Grouptivate-API
+	url = https://github.com/AAU-SW8-FASABA/Grouptivate-API.git
