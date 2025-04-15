@@ -2,7 +2,8 @@
   "dependencies": {
     "@dotenvx/dotenvx": "^1.39.1",
     "express": "^5.1.0",
-    "mongodb": "6.15"
+    "mongodb": "6.15",
+    "valibot": "^1.0.0"
   },
   "name": "grouptivate-server",
   "version": "1.0.0",

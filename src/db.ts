@@ -11,6 +11,6 @@ try {
   console.error(e);
 }
 
-let db = conn.db("sample_mflix");
+let db = conn.db("Grouptivate");
 
 export default db;
