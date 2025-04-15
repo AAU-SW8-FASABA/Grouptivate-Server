@@ -1,7 +1,7 @@
 import db from "./src/db"
 import express from "express";
 import type { Request, Response } from "express";
-import { ObjectId, type Document, type WithId } from "mongodb";
+import { ObjectId, ReturnDocument, type Document, type WithId } from "mongodb";
 import { error } from "node:console";
 import {parse}  from "valibot"
 import {GroupSchema, type Group} from "./Grouptivate-API/schemas/Group"
@@ -39,9 +39,23 @@ async function get(_collection: collectionEnum, id: string) {
   }
 }
 
+async function update(_collection: collectionEnum, id: string, data: object) {
+  try {
+    const uuid = new ObjectId(id)
+    const collection = db.collection(_collection);
+    if ("uuid" in data)
+      delete data["uuid"]
+    collection.updateOne({'_id': uuid}, data)
+  } catch (e) {
+    console.log(e)
+  }
+}
+
 async function insert(_collection: collectionEnum, data: JSON) {
   try{
     const collection = db.collection(_collection);
+    if ("uuid" in data)
+      delete data["uuid"]
     collection.insertOne(data);
 
   } catch (e) {
@@ -63,7 +77,7 @@ function convertObj(inputobj: WithId<Document>){
   let obj: Record<any,any> = inputobj
   obj.uuid = inputobj["_id"]
   delete obj["_id"]
-  console.log(obj)
+  // console.log(obj)
 
   return obj;
 }
@@ -83,12 +97,12 @@ app.post("/user", async (req: Request, res: Response) => {
   try{
     parse(NameSchema ,req.body.name)
     
-   } catch(e) {
+  } catch(e) {
     console.log(e)
     res.send(e)
     return
-   }
-   req.body["groups"] = []
+  }
+  req.body["groups"] = []
   insert(collectionEnum.User, req.body)
   // await db.collection(collectionEnum.User).insertOne(req.body)
   
@@ -166,8 +180,8 @@ app.post("/group/remove", async (req: Request, res: Response) => {
     let groupObjMby = await get(collectionEnum.Group, group);
     const groupobj:Group = parse(GroupSchema,groupObjMby)
     groupobj.users.splice(groupobj.users.indexOf(user))
-    db.collection(collectionEnum.Group).updateOne({uuid: group}, groupobj)
-    // res.send(result)
+    update(collectionEnum.Group, group, groupobj)
+    res.send("Success")
   } catch (e){
     res.send(e)
   }
