@@ -1,5 +1,5 @@
 import db from "./src/db"
-import express from "express";
+import express, { response } from "express";
 import type { Request, Response } from "express";
 import { ObjectId, ReturnDocument, type Document, type WithId } from "mongodb";
 import { error } from "node:console";
@@ -10,7 +10,8 @@ import type { Invite } from "./Grouptivate-API/schemas/Invite";
 import type { Goal } from "./Grouptivate-API/schemas/Goal";
 import { NameSchema } from "./Grouptivate-API/schemas/Name";
 import { UuidSchema } from "./Grouptivate-API/schemas/Uuid";
-import type { Key } from "node:readline";
+import { Interval } from "./Grouptivate-API/schemas/Interval";
+
 
 enum collectionEnum {Goal = "Goal", Group = "Group", User = "User", Invite = "Invite" }
 
@@ -51,13 +52,13 @@ async function update(_collection: collectionEnum, id: string, data: object) {
   }
 }
 
-async function insert(_collection: collectionEnum, data: JSON) {
+async function insert(_collection: collectionEnum, data: object) {
   try{
     const collection = db.collection(_collection);
     if ("uuid" in data)
       delete data["uuid"]
-    collection.insertOne(data);
-
+    const result = await collection.insertOne(data);
+    return result.insertedId
   } catch (e) {
     console.log(e)
   }
@@ -82,6 +83,16 @@ function convertObj(inputobj: WithId<Document>){
   return obj;
 }
 
+// function responseOk(){
+//   return new Response(null, 
+//     {
+//       status: 200,
+//       statusText: "Success"
+
+//     }
+//   )
+// }
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -95,7 +106,7 @@ app.get("/", async (req: Request, res: Response) => {
 //Create user
 app.post("/user", async (req: Request, res: Response) => {
   try{
-    parse(NameSchema ,req.body.name)
+    const userName = parse(NameSchema ,req.body.name)
     
   } catch(e) {
     console.log(e)
@@ -111,8 +122,8 @@ app.post("/user", async (req: Request, res: Response) => {
 //Get user information.
 app.get("/user", async (req: Request, res: Response) => {
   try{
-    const id:string = req.body.uuid
-    parse(UuidSchema,id)
+    const id:string = parse(UuidSchema,req.body.uuid)
+    
     console.log(id)
     const result = await get(collectionEnum.User, id);
     if(result== null){
@@ -138,12 +149,45 @@ app.get("/user/sync", async (req: Request, res: Response) => {
 });
 
 //Group ------------------
+  // uuid: UuidSchema,
+  // name: NameSchema,
+  // users: v.pipe(v.array(UuidSchema), v.minLength(1)),
+  // interval: IntervalSchema,
+  // streak: PositiveNumberSchema,
 //Create group.
 app.post("/group", async (req: Request, res: Response) => {
+  const groupName = parse(NameSchema, req.body.group)
+  const userId = parse(UuidSchema, req.body.user) //might change
+  const mockObj = {
+    name: groupName,
+    users: [userId],
+    interval: Interval.Weekly,
+    streak: 0
+  }
+  //Create group
+  const groupId = await insert(collectionEnum.Group, mockObj)
+
+  //Add group to user table
+  if (groupId == null)
+    res.send("error")
+  else{
+    update(collectionEnum.User, userId, {
+      $push: {groups: groupId}
+    })
+    res.send(groupId)
+  }
 
 });
 //Get group info.
 app.get("/group", async (req: Request, res: Response) => {
+  const groupId = parse(UuidSchema, req.body.group)
+
+  const data = await get(collectionEnum.Group, groupId)
+  if (data == null){
+    res.send("group not found")
+    return
+  }
+  res.send(convertObj(data))
 
 });
 //Delete group.
@@ -195,8 +239,8 @@ app.post("/group/goal", async (req: Request, res: Response) => {
 //Delete goal.
 app.delete("/group/goal", async (req: Request, res: Response) => {
   try{
-    const id:string = req.body.uuid
-    parse(UuidSchema,id)
+    const id:string = parse(UuidSchema,req.body.uuid)
+    
     await remove(collectionEnum.Group, req.body);
     await remove(collectionEnum.Goal, {"group": id})
     // res.send(result)
