@@ -1,9 +1,9 @@
 import db from "./src/db"
 import express, { response } from "express";
 import type { Request, Response } from "express";
-import { ObjectId, ReturnDocument, type Document, type WithId } from "mongodb";
-import { error } from "node:console";
-import {parse, uuid}  from "valibot"
+import { ObjectId, ReturnDocument, Timestamp, type Document, type WithId } from "mongodb";
+import { error, timeStamp } from "node:console";
+import {safeParse, parse}  from "valibot"
 import {GroupSchema, type Group} from "./Grouptivate-API/schemas/Group"
 import  {UserSchema} from "./Grouptivate-API/schemas/User"
 import { InviteSchema, type Invite } from "./Grouptivate-API/schemas/Invite";
@@ -67,7 +67,7 @@ async function insert(_collection: collectionEnum, data: object) {
   }
 }
 
-async function remove(_collection: collectionEnum, data: object) {
+async function remove(_collection: collectionEnum, data: object) { //TODO: check om fejler
   try{
     const collection = db.collection(_collection);
     collection.deleteMany(data);
@@ -108,35 +108,39 @@ app.get("/", async (req: Request, res: Response) => {
 //User -----------------
 //Create user
 app.post("/user", async (req: Request, res: Response) => {
-  try{
-    const userName = parse(NameSchema ,req.body.name)
-    
-  } catch(e) {
-    console.log(e)
-    res.send(e)
-    return
-  }
-  req.body["groups"] = []
-  insert(collectionEnum.User, req.body)
-  // await db.collection(collectionEnum.User).insertOne(req.body)
   
-  res.send("Post")
+  const result = safeParse(NameSchema ,req.body.name)
+    
+  if(result.success){
+    req.body["groups"] = []
+    insert(collectionEnum.User, {
+      name: result.output,
+      groups: [],
+      lastSync: new Date()
+    })
+    res.send("Success")
+  }
+  else{
+    console.log(result.issues)
+    res.status(400).send(result.issues)
+    return
+
+  }
 });
 //Get user information.
 app.get("/user", async (req: Request, res: Response) => {
-  try{
-    const id:string = parse(UuidSchema,req.body.uuid)
-    
-    console.log(id)
+  const idResult = safeParse(UuidSchema,req.body.uuid)
+  if(idResult.success){
+    const id = idResult.output
     const result = await get(collectionEnum.User, id);
     if(result== null){
-      throw new Error("Failed to get user");
-      
+      res.status(404).send("Failed to get user");  
     }
     else
       res.send(convertObj(result))
-  } catch (e){
-    res.send(e)
+  }
+  else{
+    res.status(400).send("Failed to parse input")
   }
 
 });
@@ -144,7 +148,24 @@ app.get("/user", async (req: Request, res: Response) => {
 //User/sync --------------
 //Post the information required by the GET request.
 app.post("/user/sync", async (req: Request, res: Response) => {
+    const parseRes = safeParse(UuidSchema,req.body.uuid)
+    console.log("hit")
+    if(parseRes.success){
+      const id:string = parseRes.output
 
+      const result = await update(collectionEnum.User, id, {
+        $currentDate: {
+          lastSync: true
+        }
+      });
+      res.send(result)
+    }
+    else{
+      res.status(400).send("failed to parse input")
+      throw new Error("Failed to get user");
+
+    }
+    
 });
 //Get which information is required for the specified goals.
 app.get("/user/sync", async (req: Request, res: Response) => {
@@ -159,43 +180,64 @@ app.get("/user/sync", async (req: Request, res: Response) => {
   // streak: PositiveNumberSchema,
 //Create group.
 app.post("/group", async (req: Request, res: Response) => {
-  const groupName = parse(NameSchema, req.body.group)
-  const userId = parse(UuidSchema, req.body.user) //might change
-  const mockObj = {
-    name: groupName,
-    users: [userId],
-    interval: Interval.Weekly,
-    streak: 0
+  const groupNameResult = safeParse(NameSchema, req.body.group)
+  const userIdResult = safeParse(UuidSchema, req.body.user) //might change
+  if(groupNameResult.success && userIdResult.success){
+    const groupName = groupNameResult.output
+    const userId = userIdResult.output
+    const mockObj = {
+      name: groupName,
+      users: [userId],
+      interval: Interval.Weekly,
+      streak: 0
+    }
+    //Create group
+    const groupId = await insert(collectionEnum.Group, mockObj)
+  
+    //Add group to user table
+    if (groupId == null)
+      res.status(500).send("Failed to insert")
+    else{
+      update(collectionEnum.User, userId, {
+        $push: {groups: groupId}
+      })
+      res.send(groupId)
+    }
   }
-  //Create group
-  const groupId = await insert(collectionEnum.Group, mockObj)
-
-  //Add group to user table
-  if (groupId == null)
-    res.send("error")
   else{
-    update(collectionEnum.User, userId, {
-      $push: {groups: groupId}
-    })
-    res.send(groupId)
+    res.status(400).send("Failed to parse input")
   }
 
 });
 //Get group info.
 app.get("/group", async (req: Request, res: Response) => {
-  const groupId = parse(UuidSchema, req.body.group)
+  const groupIdResult = safeParse(UuidSchema, req.body.group)
 
-  const data = await get(collectionEnum.Group, groupId)
-  if (data == null){
-    res.send("group not found")
-    return
+  if(groupIdResult.success){
+    const groupId = groupIdResult.output
+    const data = await get(collectionEnum.Group, groupId)
+    if (data == null){
+      res.status(404).send("group not found")
+      return
+    }
+    res.send(convertObj(data))
   }
-  res.send(convertObj(data))
+  else{
+    res.status(400).send("Failed to parse input")
+  }
+
 
 });
 //Delete group.
 app.delete("/group", async (req: Request, res: Response) => {
-
+  const idResult = safeParse(UuidSchema, req.body.groupId)
+  if(idResult.success){
+    const result = await remove(collectionEnum.Group, {_id: idResult.output})
+    res.send(result)
+  }
+  else{
+    res.status(400).send("Failed to parse input")
+  }
 });
 
 //Group/invite ------------------
@@ -275,15 +317,19 @@ app.post("/group/goal", async (req: Request, res: Response) => {
 });
 //Delete goal.
 app.delete("/group/goal", async (req: Request, res: Response) => {
-  try{
-    const id:string = parse(UuidSchema,req.body.uuid)
+
+  const idResult = safeParse(UuidSchema,req.body.uuid)
+  if(idResult.success){
+    const id:string = idResult.output
     
-    await remove(collectionEnum.Group, req.body);
+    // await remove(collectionEnum.Group, req.body); //skal være en update på goal array og ikke slette gruppen
     await remove(collectionEnum.Goal, {"group": id})
-    // res.send(result)
-  } catch (e){
-    res.send(e)
+    res.send("success")
   }
+  else{
+    res.status(400).send("Failed to parse input")
+  }
+  
 });
 
 app.listen(PORT, () => {
