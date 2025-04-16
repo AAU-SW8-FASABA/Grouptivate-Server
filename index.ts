@@ -7,7 +7,7 @@ import {safeParse, parse}  from "valibot"
 import {GroupSchema, type Group} from "./Grouptivate-API/schemas/Group"
 import  {UserSchema} from "./Grouptivate-API/schemas/User"
 import type { Invite } from "./Grouptivate-API/schemas/Invite";
-import type { Goal } from "./Grouptivate-API/schemas/Goal";
+import { GoalSchema, GroupGoalSchema, IndividualGoalSchema, type Goal, type GroupGoal, type IndividualGoal } from "./Grouptivate-API/schemas/Goal";
 import { NameSchema } from "./Grouptivate-API/schemas/Name";
 import { UuidSchema } from "./Grouptivate-API/schemas/Uuid";
 import { Interval } from "./Grouptivate-API/schemas/Interval";
@@ -22,6 +22,7 @@ async function get(_collection: collectionEnum, id: string) {
     switch (_collection){
       case collectionEnum.Goal:
         console.log("Not implemented");
+
         return ;
       case collectionEnum.Group:
       case collectionEnum.User:
@@ -220,7 +221,11 @@ app.delete("/group", async (req: Request, res: Response) => {
 //Group/invite ------------------
 //Create a group invitation.
 app.post("/group/invite", async (req: Request, res: Response) => {
-
+  try{
+    
+  } catch(error){
+    res.send(error)
+  }
 });
 //Get group invitations.
 app.get("/group/invite", async (req: Request, res: Response) => {
@@ -256,7 +261,17 @@ app.post("/group/remove", async (req: Request, res: Response) => {
 //Group/goal ------------------------
 //Create goal.
 app.post("/group/goal", async (req: Request, res: Response) => {
-
+  try{
+    if("user" in req.body.goal){
+      const goal:IndividualGoal = parse(IndividualGoalSchema,req.body.goal)
+    } else {
+      const goal:GroupGoal = parse(GroupGoalSchema, req.body.goal)
+    }
+    insert(collectionEnum.Goal, req.body.goal)
+    res.send("Success")
+  } catch (error){
+    res.send(error)
+  }
 });
 //Delete goal.
 app.delete("/group/goal", async (req: Request, res: Response) => {
