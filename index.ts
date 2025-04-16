@@ -3,13 +3,13 @@ import express, { response } from "express";
 import type { Request, Response } from "express";
 import { ObjectId, ReturnDocument, type Document, type WithId } from "mongodb";
 import { error } from "node:console";
-import {parse}  from "valibot"
+import {parse, uuid}  from "valibot"
 import {GroupSchema, type Group} from "./Grouptivate-API/schemas/Group"
 import  {UserSchema} from "./Grouptivate-API/schemas/User"
-import type { Invite } from "./Grouptivate-API/schemas/Invite";
+import { InviteSchema, type Invite } from "./Grouptivate-API/schemas/Invite";
 import { GoalSchema, GroupGoalSchema, IndividualGoalSchema, type Goal, type GroupGoal, type IndividualGoal } from "./Grouptivate-API/schemas/Goal";
 import { NameSchema } from "./Grouptivate-API/schemas/Name";
-import { UuidSchema } from "./Grouptivate-API/schemas/Uuid";
+import { UuidSchema, type Uuid } from "./Grouptivate-API/schemas/Uuid";
 import { Interval } from "./Grouptivate-API/schemas/Interval";
 
 
@@ -30,8 +30,10 @@ async function get(_collection: collectionEnum, id: string) {
         const res = await collection.findOne(query)
         return res;
       case collectionEnum.Invite:
-        console.log("not implemented")
-        return ;
+        //const querya = {"user": uuid};
+        //const resa = await collection.find(querya)        
+        //return resa;
+        return
       default:
         throw error("OutOfBounds");
     }
@@ -200,18 +202,37 @@ app.delete("/group", async (req: Request, res: Response) => {
 //Create a group invitation.
 app.post("/group/invite", async (req: Request, res: Response) => {
   try{
-    
+    const invite:Invite = parse(InviteSchema, req.body)
+    await insert(collectionEnum.Invite, invite)
+    res.send("success")
   } catch(error){
     res.send(error)
   }
 });
 //Get group invitations.
 app.get("/group/invite", async (req: Request, res: Response) => {
+  try{
+    const userid:Uuid = parse(UuidSchema,req.body.user)
 
+    const data = await get(collectionEnum.Invite, userid)
+    if (data == null){
+      res.send("no invites found")
+      return
+    }
+    res.send(convertObj(data))
+  } catch(error){
+    res.send(error)
+  }
 });
 //Delete a group invitation.
 app.delete("/group/invite", async (req: Request, res: Response) => {
-
+  try{
+    const inviteid:Uuid = parse(UuidSchema,req.body.invite)
+    await remove(collectionEnum.Invite, {_id: inviteid})
+    res.send("success")
+  } catch(error){
+    res.send(error)
+  }
 });
 
 //group/invite/respond ---------------
@@ -240,12 +261,13 @@ app.post("/group/remove", async (req: Request, res: Response) => {
 //Create goal.
 app.post("/group/goal", async (req: Request, res: Response) => {
   try{
-    if("user" in req.body.goal){
-      const goal:IndividualGoal = parse(IndividualGoalSchema,req.body.goal)
+    if("user" in req.body){
+      const goal:IndividualGoal = parse(IndividualGoalSchema,req.body)
+      await insert(collectionEnum.Goal,goal)
     } else {
-      const goal:GroupGoal = parse(GroupGoalSchema, req.body.goal)
+      const goal:GroupGoal = parse(GroupGoalSchema,req.body)
+      await insert(collectionEnum.Goal,goal)
     }
-    insert(collectionEnum.Goal, req.body.goal)
     res.send("Success")
   } catch (error){
     res.send(error)
