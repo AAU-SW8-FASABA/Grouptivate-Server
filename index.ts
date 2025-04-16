@@ -127,19 +127,18 @@ app.post("/user", async (req: Request, res: Response) => {
 });
 //Get user information.
 app.get("/user", async (req: Request, res: Response) => {
-  try{
-    const id:string = parse(UuidSchema,req.body.uuid)
-    
-    console.log(id)
+  const idResult = safeParse(UuidSchema,req.body.uuid)
+  if(idResult.success){
+    const id = idResult.output
     const result = await get(collectionEnum.User, id);
     if(result== null){
-      throw new Error("Failed to get user");
-      
+      throw new Error("Failed to get user");  
     }
     else
       res.send(convertObj(result))
-  } catch (e){
-    res.send(e)
+  }
+  else{
+    res.status(400).send("Failed to parse input")
   }
 
 });
@@ -179,43 +178,64 @@ app.get("/user/sync", async (req: Request, res: Response) => {
   // streak: PositiveNumberSchema,
 //Create group.
 app.post("/group", async (req: Request, res: Response) => {
-  const groupName = parse(NameSchema, req.body.group)
-  const userId = parse(UuidSchema, req.body.user) //might change
-  const mockObj = {
-    name: groupName,
-    users: [userId],
-    interval: Interval.Weekly,
-    streak: 0
+  const groupNameResult = safeParse(NameSchema, req.body.group)
+  const userIdResult = safeParse(UuidSchema, req.body.user) //might change
+  if(groupNameResult.success && userIdResult.success){
+    const groupName = groupNameResult.output
+    const userId = userIdResult.output
+    const mockObj = {
+      name: groupName,
+      users: [userId],
+      interval: Interval.Weekly,
+      streak: 0
+    }
+    //Create group
+    const groupId = await insert(collectionEnum.Group, mockObj)
+  
+    //Add group to user table
+    if (groupId == null)
+      res.send("error")
+    else{
+      update(collectionEnum.User, userId, {
+        $push: {groups: groupId}
+      })
+      res.send(groupId)
+    }
   }
-  //Create group
-  const groupId = await insert(collectionEnum.Group, mockObj)
-
-  //Add group to user table
-  if (groupId == null)
-    res.send("error")
   else{
-    update(collectionEnum.User, userId, {
-      $push: {groups: groupId}
-    })
-    res.send(groupId)
+    res.status(400).send("Failed to parse input")
   }
 
 });
 //Get group info.
 app.get("/group", async (req: Request, res: Response) => {
-  const groupId = parse(UuidSchema, req.body.group)
+  const groupIdResult = safeParse(UuidSchema, req.body.group)
 
-  const data = await get(collectionEnum.Group, groupId)
-  if (data == null){
-    res.send("group not found")
-    return
+  if(groupIdResult.success){
+    const groupId = groupIdResult.output
+    const data = await get(collectionEnum.Group, groupId)
+    if (data == null){
+      res.status(404).send("group not found")
+      return
+    }
+    res.send(convertObj(data))
   }
-  res.send(convertObj(data))
+  else{
+    res.status(400).send("Failed to parse input")
+  }
+
 
 });
 //Delete group.
 app.delete("/group", async (req: Request, res: Response) => {
-
+  const idResult = safeParse(UuidSchema, req.body.groupId)
+  if(idResult.success){
+    const result = await remove(collectionEnum.Group, {_id: idResult.output})
+    res.send(result)
+  }
+  else{
+    res.status(400).send("Failed to parse input")
+  }
 });
 
 //Group/invite ------------------
