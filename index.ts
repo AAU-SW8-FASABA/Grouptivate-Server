@@ -65,7 +65,7 @@ async function insert(_collection: collectionEnum, data: object) {
   }
 }
 
-async function remove(_collection: collectionEnum, data: object) {
+async function remove(_collection: collectionEnum, data: object) { //TODO: check om fejler
   try{
     const collection = db.collection(_collection);
     collection.deleteMany(data);
@@ -120,7 +120,7 @@ app.post("/user", async (req: Request, res: Response) => {
   }
   else{
     console.log(result.issues)
-    res.send(result.issues)
+    res.status(400).send(result.issues)
     return
 
   }
@@ -132,7 +132,7 @@ app.get("/user", async (req: Request, res: Response) => {
     const id = idResult.output
     const result = await get(collectionEnum.User, id);
     if(result== null){
-      throw new Error("Failed to get user");  
+      res.status(404).send("Failed to get user");  
     }
     else
       res.send(convertObj(result))
@@ -159,7 +159,7 @@ app.post("/user/sync", async (req: Request, res: Response) => {
       res.send(result)
     }
     else{
-      res.send()
+      res.status(400).send("failed to parse input")
       throw new Error("Failed to get user");
 
     }
@@ -194,7 +194,7 @@ app.post("/group", async (req: Request, res: Response) => {
   
     //Add group to user table
     if (groupId == null)
-      res.send("error")
+      res.status(500).send("Failed to insert")
     else{
       update(collectionEnum.User, userId, {
         $push: {groups: groupId}
@@ -295,15 +295,19 @@ app.post("/group/goal", async (req: Request, res: Response) => {
 });
 //Delete goal.
 app.delete("/group/goal", async (req: Request, res: Response) => {
-  try{
-    const id:string = parse(UuidSchema,req.body.uuid)
+
+  const idResult = safeParse(UuidSchema,req.body.uuid)
+  if(idResult.success){
+    const id:string = idResult.output
     
-    await remove(collectionEnum.Group, req.body);
+    // await remove(collectionEnum.Group, req.body); //skal være en update på goal array og ikke slette gruppen
     await remove(collectionEnum.Goal, {"group": id})
-    // res.send(result)
-  } catch (e){
-    res.send(e)
+    res.send("success")
   }
+  else{
+    res.status(400).send("Failed to parse input")
+  }
+  
 });
 
 app.listen(PORT, () => {
