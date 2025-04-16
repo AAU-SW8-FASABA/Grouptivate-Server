@@ -1,9 +1,9 @@
 import db from "./src/db"
 import express, { response } from "express";
 import type { Request, Response } from "express";
-import { ObjectId, ReturnDocument, type Document, type WithId } from "mongodb";
-import { error } from "node:console";
-import {parse}  from "valibot"
+import { ObjectId, ReturnDocument, Timestamp, type Document, type WithId } from "mongodb";
+import { error, timeStamp } from "node:console";
+import {safeParse, parse}  from "valibot"
 import {GroupSchema, type Group} from "./Grouptivate-API/schemas/Group"
 import  {UserSchema} from "./Grouptivate-API/schemas/User"
 import type { Invite } from "./Grouptivate-API/schemas/Invite";
@@ -105,19 +105,24 @@ app.get("/", async (req: Request, res: Response) => {
 //User -----------------
 //Create user
 app.post("/user", async (req: Request, res: Response) => {
-  try{
-    const userName = parse(NameSchema ,req.body.name)
-    
-  } catch(e) {
-    console.log(e)
-    res.send(e)
-    return
-  }
-  req.body["groups"] = []
-  insert(collectionEnum.User, req.body)
-  // await db.collection(collectionEnum.User).insertOne(req.body)
   
-  res.send("Post")
+  const result = safeParse(NameSchema ,req.body.name)
+    
+  if(result.success){
+    req.body["groups"] = []
+    insert(collectionEnum.User, {
+      name: result.output,
+      groups: [],
+      lastSync: new Date()
+    })
+    res.send("Success")
+  }
+  else{
+    console.log(result.issues)
+    res.send(result.issues)
+    return
+
+  }
 });
 //Get user information.
 app.get("/user", async (req: Request, res: Response) => {
@@ -141,7 +146,24 @@ app.get("/user", async (req: Request, res: Response) => {
 //User/sync --------------
 //Post the information required by the GET request.
 app.post("/user/sync", async (req: Request, res: Response) => {
+    const parseRes = safeParse(UuidSchema,req.body.uuid)
+    console.log("hit")
+    if(parseRes.success){
+      const id:string = parseRes.output
 
+      const result = await update(collectionEnum.User, id, {
+        $currentDate: {
+          lastSync: true
+        }
+      });
+      res.send(result)
+    }
+    else{
+      res.send()
+      throw new Error("Failed to get user");
+
+    }
+    
 });
 //Get which information is required for the specified goals.
 app.get("/user/sync", async (req: Request, res: Response) => {
