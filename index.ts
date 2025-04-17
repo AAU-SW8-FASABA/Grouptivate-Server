@@ -3,7 +3,7 @@ import express, { response } from "express";
 import type { Request, Response } from "express";
 import { ObjectId, ReturnDocument, Timestamp, type Document, type WithId } from "mongodb";
 import { error, timeStamp } from "node:console";
-import {safeParse, parse, uuid}  from "valibot"
+import {safeParse, parse, uuid, object}  from "valibot"
 import {GroupSchema, type Group} from "./Grouptivate-API/schemas/Group"
 import  {UserSchema} from "./Grouptivate-API/schemas/User"
 import { InviteSchema, type Invite } from "./Grouptivate-API/schemas/Invite";
@@ -246,8 +246,11 @@ app.delete("/group", async (req: Request, res: Response) => {
 app.post("/group/invite", async (req: Request, res: Response) => {
   const inviteResult = safeParse(InviteSchema,req.body)
   if(inviteResult.success){
-    const invite:Invite = inviteResult.output
-    await insert(collectionEnum.Invite, invite)
+    const invObj: Object = {
+      user: new ObjectId(inviteResult.output.user),
+      group: new ObjectId(inviteResult.output.group)
+    }
+    await insert(collectionEnum.Invite, invObj)
     res.send("success")
   }
   else{
