@@ -280,7 +280,8 @@ app.get("/group/invite", async (req: Request, res: Response) => {
 app.delete("/group/invite", async (req: Request, res: Response) => {
   try{
     const inviteId = parse(UuidSchema,req.body.uuid)
-    const result = await remove(collectionEnum.Invite, {_id: inviteId})
+    const inviteuuid = new ObjectId(inviteId)
+    const result = await remove(collectionEnum.Invite, {_id: inviteuuid})
     res.send(result)
   } catch(error){
     res.send(error)
@@ -297,8 +298,8 @@ app.post("/group/invite/respond", async (req: Request, res: Response) => {
     const userId = userIdResult.output
     const groupId = groupIdResult.output
     const inviteId = inviteIdResult.output
-    update(collectionEnum.Group, groupId, { $push: {users: userId}})
-    update(collectionEnum.User, userId, { $push: {groups: groupId}})
+    update(collectionEnum.Group, groupId, { $push: {users: new ObjectId(userId)}})
+    update(collectionEnum.User, userId, { $push: {groups: new ObjectId(userId)}})
     const result = await remove(collectionEnum.Invite, {_id: inviteId})
     res.send(result)
   }
