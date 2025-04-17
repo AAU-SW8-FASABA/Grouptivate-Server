@@ -43,37 +43,40 @@ async function get(_collection: collectionEnum, id: string) {
 }
 
 async function update(_collection: collectionEnum, id: string, data: object) {
-  try {
-    const uuid = new ObjectId(id)
-    const collection = db.collection(_collection);
-    if ("uuid" in data)
-      delete data["uuid"]
-    collection.updateOne({'_id': uuid}, data)
-  } catch (e) {
-    console.log(e)
-  }
+  
+  const uuid = new ObjectId(id)
+  const collection = db.collection(_collection);
+  if ("uuid" in data)
+    delete data["uuid"]
+  collection.updateOne({'_id': uuid}, data)
+
 }
 
 async function insert(_collection: collectionEnum, data: object) {
-  try{
-    const collection = db.collection(_collection);
-    if ("uuid" in data)
-      delete data["uuid"]
-    const result = await collection.insertOne(data);
-    return result.insertedId
-  } catch (e) {
-    console.log(e)
-  }
+ 
+  const collection = db.collection(_collection);
+  if ("uuid" in data)
+    delete data["uuid"]
+  const result = await collection.insertOne(data);
+  return result.insertedId
+ 
 }
 
 async function remove(_collection: collectionEnum, data: object) { //TODO: check om fejler
-  try{
-    const collection = db.collection(_collection);
-    collection.deleteMany(data);
 
-  } catch (e) {
-    console.log(e)
+  if('_id' in data){
+    const idResult = safeParse(UuidSchema, data["_id"])
+    if(idResult.success){
+      
+      data['_id'] =  new ObjectId(idResult.output)
+    }
+    else{
+      return
+    }
   }
+  const collection = db.collection(_collection);
+  collection.deleteMany(data);
+
 }
 
 function convertObj(inputobj: WithId<Document>){
@@ -161,7 +164,6 @@ app.post("/user/sync", async (req: Request, res: Response) => {
     }
     else{
       res.status(400).send("failed to parse input")
-      throw new Error("Failed to get user");
 
     }
     
@@ -198,7 +200,7 @@ app.post("/group", async (req: Request, res: Response) => {
       res.status(500).send("Failed to insert")
     else{
       update(collectionEnum.User, userId, {
-        $push: {groups: groupId}
+        $push: {groups: new ObjectId(groupId)}
       })
       res.send(groupId)
     }
@@ -242,18 +244,22 @@ app.delete("/group", async (req: Request, res: Response) => {
 //Group/invite ------------------
 //Create a group invitation.
 app.post("/group/invite", async (req: Request, res: Response) => {
-  try{
-    const invite:Invite = parse(InviteSchema, req.body)
+  const inviteResult = safeParse(InviteSchema,req.body)
+  if(inviteResult.success){
+    const invite:Invite = inviteResult.output
     await insert(collectionEnum.Invite, invite)
     res.send("success")
-  } catch(error){
-    res.send(error)
+  }
+  else{
+    res.status(400).send(inviteResult.issues)
   }
 });
 //Get group invitations.
 app.get("/group/invite", async (req: Request, res: Response) => {
-  try{
-    const userid = parse(UuidSchema,req.body.user)
+  const userIdResult = safeParse(UuidSchema,req.body.user)
+  if(userIdResult.success){
+    const userid:Uuid = userIdResult.output
+
     const data = await db.collection(collectionEnum.Invite).find({user: userid})
     if (data == null){
       res.send("no invites found")
@@ -265,8 +271,6 @@ app.get("/group/invite", async (req: Request, res: Response) => {
       dataArray.push(invite)
     }
     res.send(JSON.stringify(dataArray))
-  } catch(error){
-    res.send(error)
   }
 });
 //Delete a group invitation.
