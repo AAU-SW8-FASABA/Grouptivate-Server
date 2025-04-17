@@ -30,10 +30,9 @@ async function get(_collection: collectionEnum, id: string) {
         const res = await collection.findOne(query)
         return res;
       case collectionEnum.Invite:
-        //const querya = {"user": uuid};
-        //const resa = await collection.find(querya)        
-        //return resa;
-        return
+        //const querya = "user: uuid};
+        const invites = await collection.findOne({user: uuid})        
+        return invites;
       default:
         throw error("OutOfBounds");
     }
@@ -254,14 +253,18 @@ app.post("/group/invite", async (req: Request, res: Response) => {
 //Get group invitations.
 app.get("/group/invite", async (req: Request, res: Response) => {
   try{
-    const userid:Uuid = parse(UuidSchema,req.body.user)
-
-    const data = await get(collectionEnum.Invite, userid)
+    const userid = parse(UuidSchema,req.body.user)
+    const data = await db.collection(collectionEnum.Invite).find({user: userid})
     if (data == null){
       res.send("no invites found")
       return
     }
-    res.send(convertObj(data))
+    const dataArray: Invite[] = []
+    for await (const doc of data){
+      const invite:Invite = parse(InviteSchema, doc)
+      dataArray.push(invite)
+    }
+    res.send(JSON.stringify(dataArray))
   } catch(error){
     res.send(error)
   }
@@ -269,7 +272,7 @@ app.get("/group/invite", async (req: Request, res: Response) => {
 //Delete a group invitation.
 app.delete("/group/invite", async (req: Request, res: Response) => {
   try{
-    const inviteid:Uuid = parse(UuidSchema,req.body.invite)
+    const inviteid = parse(UuidSchema,req.body.invite)
     await remove(collectionEnum.Invite, {_id: inviteid})
     res.send("success")
   } catch(error){
@@ -280,7 +283,7 @@ app.delete("/group/invite", async (req: Request, res: Response) => {
 //group/invite/respond ---------------
 //Respond to invite.
 app.post("/group/invite/respond", async (req: Request, res: Response) => {
-
+  
 });
 
 //group/remove ----------------------
