@@ -68,6 +68,15 @@ async function insert(_collection: collectionEnum, data: object) {
 
 async function remove(_collection: collectionEnum, data: object) { //TODO: check om fejler
   try{
+    if('_id' in data){
+      const idResult = safeParse(UuidSchema, data["_id"])
+      if(idResult.success){
+        data['_id'] =  new ObjectId(idResult.output)
+      }
+      else{
+        return
+      }
+    }
     const collection = db.collection(_collection);
     collection.deleteMany(data);
 
@@ -271,12 +280,14 @@ app.get("/group/invite", async (req: Request, res: Response) => {
 });
 //Delete a group invitation.
 app.delete("/group/invite", async (req: Request, res: Response) => {
-  try{
-    const inviteid = parse(UuidSchema,req.body.invite)
+  const inviteIdResult = safeParse(UuidSchema,req.body.invite)
+  if(inviteIdResult.success){
+    const inviteid:Uuid = inviteIdResult.output
     await remove(collectionEnum.Invite, {_id: inviteid})
     res.send("success")
-  } catch(error){
-    res.send(error)
+  }
+  else{
+    res.status(400).send(inviteIdResult.issues)
   }
 });
 
@@ -289,34 +300,59 @@ app.post("/group/invite/respond", async (req: Request, res: Response) => {
 //group/remove ----------------------
 //Remove user from group.
 app.post("/group/remove", async (req: Request, res: Response) => {
-  try{
-    const user:string = parse(UuidSchema,req.body.user)
-    const group:string = parse(UuidSchema,req.body.group)
+  const userResult = safeParse(UuidSchema,req.body.user)
+  const groupResult = safeParse(UuidSchema,req.body.group)
+
+  if(userResult.success && groupResult.success){
+    const user:string = userResult.output
+    const group:string = groupResult.output
+    
     let groupObjMby = await get(collectionEnum.Group, group);
-    const groupobj:Group = parse(GroupSchema,groupObjMby)
-    groupobj.users.splice(groupobj.users.indexOf(user))
-    update(collectionEnum.Group, group, groupobj)
-    res.send("Success")
-  } catch (e){
-    res.send(e)
+
+    const groupobjResult = safeParse(GroupSchema,groupObjMby)
+    if(groupobjResult.success){
+      const groupobj:Group = groupobjResult.output
+      groupobj.users.splice(groupobj.users.indexOf(user))
+      update(collectionEnum.Group, group, groupobj)
+      res.send("Success")
+    }
+    else{
+      res.status(400).send(groupobjResult.issues)
+    }    
   }
+  else{
+    res.status(400).send("Failed to parse input")
+  }
+
 });
 
 //Group/goal ------------------------
 //Create goal.
 app.post("/group/goal", async (req: Request, res: Response) => {
-  try{
-    if("user" in req.body){
-      const goal:IndividualGoal = parse(IndividualGoalSchema,req.body)
-      await insert(collectionEnum.Goal,goal)
-    } else {
-      const goal:GroupGoal = parse(GroupGoalSchema,req.body)
+  
+  if("user" in req.body){
+    const goalResult = safeParse(IndividualGoalSchema, req.body)
+    if(goalResult.success){
+      const goal:IndividualGoal = goalResult.output
+      
       await insert(collectionEnum.Goal,goal)
     }
-    res.send("Success")
-  } catch (error){
-    res.send(error)
+    else{
+      res.status(400).send(goalResult.issues)
+      return
+    }
+  } else {
+    const goalResult = safeParse(GroupGoalSchema, req.body)
+    if(goalResult.success){
+      const goal:GroupGoal = goalResult.output
+      await insert(collectionEnum.Goal,goal)
+    }
+    else{
+      res.status(400).send(goalResult.issues)
+      return
+    }
   }
+  res.send("Success")
 });
 //Delete goal.
 app.delete("/group/goal", async (req: Request, res: Response) => {
