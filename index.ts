@@ -200,7 +200,7 @@ app.post("/group", async (req: Request, res: Response) => {
       res.status(500).send("Failed to insert")
     else{
       update(collectionEnum.User, userId, {
-        $push: {groups: groupId}
+        $push: {groups: new ObjectId(groupId)}
       })
       res.send(groupId)
     }
