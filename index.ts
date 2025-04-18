@@ -178,7 +178,21 @@ app.post("/user/sync", async (req: Request, res: Response) => {
 });
 //Get which information is required for the specified goals.
 app.get("/user/sync", async (req: Request, res: Response) => {
+  const userIdResult = safeParse(UuidSchema,req.body.user)
+  if(userIdResult.success){
+    const userId = userIdResult.output//new ObjectId(userIdResult.output)
+    console.log(userId)
+    const data = await db.collection(collectionEnum.Goal).find({user:userId}).project({activity: 1,metric: 1, _id:0 })
+    const goals = []
+    for await (const doc of data){
+      goals.push(doc)
 
+    }
+    res.send(JSON.stringify(goals))
+  }
+  else{
+    res.status(400).send(userIdResult.issues)
+  }
 });
 
 //Group ------------------
