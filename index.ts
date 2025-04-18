@@ -2,7 +2,7 @@ import db from "./src/db"
 import express, { response } from "express";
 import type { Request, Response } from "express";
 import { ObjectId, ReturnDocument, Timestamp, type Document, type WithId } from "mongodb";
-import { error, timeStamp } from "node:console";
+import { error, group, timeStamp } from "node:console";
 import {safeParse, parse, uuid, object}  from "valibot"
 import {GroupSchema, type Group} from "./Grouptivate-API/schemas/Group"
 import  {UserSchema} from "./Grouptivate-API/schemas/User"
@@ -49,6 +49,14 @@ async function update(_collection: collectionEnum, id: string, data: object) {
   if ("uuid" in data)
     delete data["uuid"]
   collection.updateOne({'_id': uuid}, data)
+
+}
+async function updateFilter(_collection: collectionEnum, filter: object, data: object) {
+  
+  const collection = db.collection(_collection);
+  if ("uuid" in data)
+    delete data["uuid"]
+  collection.updateOne(filter, data)
 
 }
 
@@ -188,7 +196,7 @@ app.post("/group", async (req: Request, res: Response) => {
     const userId = userIdResult.output
     const mockObj = {
       name: groupName,
-      users: [userId],
+      users: [new ObjectId(userId)],
       interval: Interval.Weekly,
       streak: 0
     }
@@ -233,8 +241,22 @@ app.get("/group", async (req: Request, res: Response) => {
 app.delete("/group", async (req: Request, res: Response) => {
   const idResult = safeParse(UuidSchema, req.body.groupId)
   if(idResult.success){
-    const result = await remove(collectionEnum.Group, {_id: idResult.output})
-    res.send(result)
+    console.log(idResult.output)
+    const group = await get(collectionEnum.Group, idResult.output)
+    if(group?.users == null)
+      res.status(404).send("Failed to find group")
+    else{
+      let idArr: ObjectId[] = [] 
+      for(const user of group.users)
+        idArr.push(new ObjectId(user))
+
+      updateFilter(collectionEnum.User, 
+        {_id: {$in: idArr}}, 
+        {$pull: {groups: new ObjectId(idResult.output)} 
+      } )
+      const result = await remove(collectionEnum.Group, {_id: idResult.output})
+      res.send(result)
+    }
   }
   else{
     res.status(400).send("Failed to parse input")
@@ -314,10 +336,13 @@ app.post("/group/remove", async (req: Request, res: Response) => {
   try{
     const user:string = parse(UuidSchema,req.body.user)
     const group:string = parse(UuidSchema,req.body.group)
-    let groupObjMby = await get(collectionEnum.Group, group);
-    const groupobj:Group = parse(GroupSchema,groupObjMby)
-    groupobj.users.splice(groupobj.users.indexOf(user))
-    update(collectionEnum.Group, group, groupobj)
+
+    update(collectionEnum.Group, group, 
+      {$pull: {users: new ObjectId(user)} 
+    })
+    update(collectionEnum.User,  user, 
+      {$pull: {groups: new ObjectId(group)} 
+    })
     res.send("Success")
   } catch (e){
     res.send(e)
