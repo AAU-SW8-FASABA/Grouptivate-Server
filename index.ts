@@ -70,20 +70,20 @@ async function insert(_collection: collectionEnum, data: object) {
  
 }
 
-async function remove(_collection: collectionEnum, data: object) { //TODO: check om fejler
+async function remove(_collection: collectionEnum, filter: object) { //TODO: check om fejler
 
-  if('_id' in data){
-    const idResult = safeParse(UuidSchema, data["_id"])
+  if('_id' in filter){
+    const idResult = safeParse(UuidSchema, filter["_id"])
     if(idResult.success){
       
-      data['_id'] =  new ObjectId(idResult.output)
+      filter['_id'] =  new ObjectId(idResult.output)
     }
     else{
       return
     }
   }
   const collection = db.collection(_collection);
-  collection.deleteMany(data);
+  collection.deleteMany(filter);
 
 }
 
@@ -365,7 +365,7 @@ app.post("/group/goal", async (req: Request, res: Response) => {
     res.send(error)
   }
 });
-//Delete goal.
+//Delete goal. TODO: do we want this to remove all goals? det er det den gør lige nu :)
 app.delete("/group/goal", async (req: Request, res: Response) => {
 
   const idResult = safeParse(UuidSchema,req.body.uuid)
