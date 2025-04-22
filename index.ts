@@ -103,16 +103,6 @@ function convertObj(inputobj: WithId<Document>){
   return obj;
 }
 
-// function responseOk(){
-//   return new Response(null, 
-//     {
-//       status: 200,
-//       statusText: "Success"
-
-//     }
-//   )
-// }
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -122,7 +112,7 @@ app.get("/", async (req: Request, res: Response) => {
    res.send("Hello to the one and one grouptivate")
 });
 
-function parseInput(inputSchema: RequestSchema<SearchParametersSchema, any, any>, req: Request){
+function parseInput(inputSchema: RequestSchema<SearchParametersSchema, any, any>, req: Request, res: Response){
   const parseRes = []
   const result: Record<string,any> = {}
 
@@ -142,7 +132,8 @@ function parseInput(inputSchema: RequestSchema<SearchParametersSchema, any, any>
     result.success = parse.success
     Object.assign(result, parse.output)
   }
-
+  if(!result.success)
+    res.status(400).send("Failed to parse input")
   return result
 }
 
@@ -168,7 +159,7 @@ function parseOutput(schema: RequestSchema<SearchParametersSchema, any, any>, da
 //Create user
 app.post("/user", async (req: Request, res: Response) => {
   
-  const result = parseInput(UserCreateRequestSchema ,req)
+  const result = parseInput(UserCreateRequestSchema ,req, res)
     
   if(result.success){
     const id = await insert(collectionEnum.User, {
@@ -181,15 +172,13 @@ app.post("/user", async (req: Request, res: Response) => {
     }
     parseOutput(UserCreateRequestSchema, response, res)
   }
-  else{
-    res.status(400).send(result.issues)
-  }
+
 });
 
 //Get user information.
 app.get("/user", async (req: Request, res: Response) => {
 
-  const parseRes = parseInput(UserGetRequestSchema, req)
+  const parseRes = parseInput(UserGetRequestSchema, req, res)
   if(parseRes.success){
     const id = parseRes.uuid
     const user = await get(collectionEnum.User, id);
@@ -199,9 +188,6 @@ app.get("/user", async (req: Request, res: Response) => {
     else{
       parseOutput(UserGetRequestSchema, user, res)
     }
-  }
-  else{
-    res.status(400).send("Failed to parse input")
   }
 
 });
