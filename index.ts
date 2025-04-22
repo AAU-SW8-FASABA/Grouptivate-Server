@@ -5,12 +5,13 @@ import { ObjectId, ReturnDocument, Timestamp, type Document, type WithId } from 
 import { error, group, timeStamp } from "node:console";
 import {safeParse, parse, uuid, object}  from "valibot"
 import {GroupSchema, type Group} from "./Grouptivate-API/schemas/Group"
-import  {UserSchema} from "./Grouptivate-API/schemas/User"
+import  {UserSchema, UserGetRequestSchema, UserCreateRequestSchema} from "./Grouptivate-API/schemas/User"
 import { InviteSchema, type Invite } from "./Grouptivate-API/schemas/Invite";
 import { GoalSchema, GroupGoalSchema, IndividualGoalSchema, type Goal, type GroupGoal, type IndividualGoal } from "./Grouptivate-API/schemas/Goal";
 import { NameSchema } from "./Grouptivate-API/schemas/Name";
 import { UuidSchema, type Uuid } from "./Grouptivate-API/schemas/Uuid";
 import { Interval } from "./Grouptivate-API/schemas/Interval";
+import type { RequestSchema, SearchParametersSchema } from "./Grouptivate-API/containers/Request";
 
 
 enum collectionEnum {Goal = "Goal", Group = "Group", User = "User", Invite = "Invite" }
@@ -89,7 +90,13 @@ async function remove(_collection: collectionEnum, filter: object) { //TODO: che
 
 function convertObj(inputobj: WithId<Document>){
   let obj: Record<any,any> = inputobj
-  obj.uuid = inputobj["_id"]
+  obj.uuid = inputobj["_id"].toString()
+  if("groups" in inputobj){
+    for(const i in inputobj["groups"]){
+      inputobj["groups"][i] = inputobj["groups"][i].toString()
+    }
+  }
+
   delete obj["_id"]
   // console.log(obj)
 
@@ -115,39 +122,82 @@ app.get("/", async (req: Request, res: Response) => {
    res.send("Hello to the one and one grouptivate")
 });
 
+function parseInput(inputSchema: RequestSchema<SearchParametersSchema, any, any>, req: Request){
+  const parseRes = []
+  const result: Record<string,any> = {}
+
+  if(Object.keys(inputSchema.searchParams).length > 0){
+    const paramSchema = inputSchema.searchParams
+    for( const [key,value] of Object.entries(paramSchema)) {
+      const parse = safeParse(value, {[key] :req.query[key]})
+      parseRes.push(parse.success)
+      Object.assign(result, parse.output)
+    }
+    result.success = !parseRes.every(res => {
+      res === true
+    })
+  }
+  else{
+    const parse = safeParse(inputSchema.requestBody, req.body)
+    result.success = parse.success
+    Object.assign(result, parse.output)
+  }
+
+  return result
+}
+
+
+function parseOutput(schema: RequestSchema<SearchParametersSchema, any, any>, data: WithId<Document> | object, res: Response){
+  if(schema.responseBody){
+    if("_id" in data) 
+      data = convertObj(data)
+    const parseRes = safeParse(schema.responseBody, data)
+    if(parseRes.success){
+      console.log("it got there")
+      console.log(parseRes.output)
+      return res.send(parseRes.output)
+    }
+    else{
+      return res.status(400).send(parseRes.issues)
+    }
+  }
+  return res.status(400).send("Failed to read schema")
+}
+
 //User -----------------
 //Create user
 app.post("/user", async (req: Request, res: Response) => {
   
-  const result = safeParse(NameSchema ,req.body.name)
+  const result = parseInput(UserCreateRequestSchema ,req)
     
   if(result.success){
-    req.body["groups"] = []
-    insert(collectionEnum.User, {
-      name: result.output,
+    const id = await insert(collectionEnum.User, {
+      name: result.name,
       groups: [],
       lastSync: new Date()
     })
-    res.send("Success")
+    const response = {
+      uuid: id.toString()
+    }
+    parseOutput(UserCreateRequestSchema, response, res)
   }
   else{
-    console.log(result.issues)
     res.status(400).send(result.issues)
-    return
-
   }
 });
 //Get user information.
 app.get("/user", async (req: Request, res: Response) => {
-  const idResult = safeParse(UuidSchema,req.body.uuid)
-  if(idResult.success){
-    const id = idResult.output
-    const result = await get(collectionEnum.User, id);
-    if(result== null){
+
+  const parseRes = parseInput(UserGetRequestSchema, req)
+  if(parseRes.success){
+    const id = parseRes.uuid
+    const user = await get(collectionEnum.User, id);
+    if(user== null){
       res.status(404).send("Failed to get user");  
     }
-    else
-      res.send(convertObj(result))
+    else{
+      parseOutput(UserGetRequestSchema, user, res)
+    }
   }
   else{
     res.status(400).send("Failed to parse input")
