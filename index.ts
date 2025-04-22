@@ -4,7 +4,7 @@ import type { Request, Response } from "express";
 import { ObjectId, ReturnDocument, Timestamp, type Document, type WithId } from "mongodb";
 import { error, group, timeStamp } from "node:console";
 import {safeParse, parse, uuid, object}  from "valibot"
-import {GroupSchema, type Group} from "./Grouptivate-API/schemas/Group"
+import {GroupCreateRequestSchema, GroupGetRequestSchema, GroupSchema, type Group} from "./Grouptivate-API/schemas/Group"
 import  {UserSchema, UserGetRequestSchema, UserCreateRequestSchema} from "./Grouptivate-API/schemas/User"
 import { InviteCreateRequestSchema, InviteSchema, type Invite } from "./Grouptivate-API/schemas/Invite";
 import { GoalSchema, GroupGoalSchema, IndividualGoalSchema, type Goal, type GroupGoal, type IndividualGoal } from "./Grouptivate-API/schemas/Goal";
@@ -96,6 +96,11 @@ function convertObj(inputobj: WithId<Document>){
       inputobj["groups"][i] = inputobj["groups"][i].toString()
     }
   }
+  if("users" in inputobj){
+    for(const i in inputobj["users"]){
+      inputobj["users"][i] = inputobj["users"][i].toString()
+    }
+  }
 
   delete obj["_id"]
   // console.log(obj)
@@ -114,26 +119,32 @@ app.get("/", async (req: Request, res: Response) => {
 
 function parseInput(inputSchema: RequestSchema<SearchParametersSchema, any, any>, req: Request, res: Response){
   const parseRes = []
-  const result: Record<string,any> = {}
-
+  const result: Record<string,any> = {
+    issues: []
+  }
   if(Object.keys(inputSchema.searchParams).length > 0){
     const paramSchema = inputSchema.searchParams
+    console.log(req.query)
     for( const [key,value] of Object.entries(paramSchema)) {
       const parse = safeParse(value, {[key] :req.query[key]})
       parseRes.push(parse.success)
+      if(!parse.success)
+        result.issues.push(parse.issues)
       Object.assign(result, parse.output)
     }
     result.success = !parseRes.every(res => {
       res === true
     })
   }
-  else{
-    const parse = safeParse(inputSchema.requestBody, req.body)
-    result.success = parse.success
-    Object.assign(result, parse.output)
+  if(inputSchema?.requestBody && Object.keys(inputSchema?.requestBody).length > 0){
+    console.log("should this happen?")
+    const parseBody = safeParse(inputSchema.requestBody, req.body)
+    result.success = parseBody.success && (result?.success ?? true)
+    result.issues.push(parseBody.issues)
+    Object.assign(result, parseBody.output)
   }
   if(!result.success)
-    res.status(400).send("Failed to parse input")
+    res.status(400).send(result.issues)
   return result
 }
 
@@ -144,16 +155,15 @@ function parseOutput(schema: RequestSchema<SearchParametersSchema, any, any>, da
       data = convertObj(data)
     const parseRes = safeParse(schema.responseBody, data)
     if(parseRes.success){
-      console.log("it got there")
-      console.log(parseRes.output)
+      // console.log(parseRes.output)
       return res.send(parseRes.output)
     }
     else{
-      return res.status(400).send(parseRes.issues)
+      console.log(data)
+      return res.status(401).send(parseRes.issues)
     }
   }
-  console.log(schema.responseBody)
-  return res.status(400).send("Failed to read schema")
+  return res.status(200).send("No responseBody")
 }
 
 //User -----------------
@@ -197,7 +207,6 @@ app.get("/user", async (req: Request, res: Response) => {
 //Post the information required by the GET request.
 app.post("/user/sync", async (req: Request, res: Response) => {
     const parseRes = safeParse(UuidSchema,req.body.uuid)
-    console.log("hit")
     if(parseRes.success){
       const id:string = parseRes.output
       const result = await update(collectionEnum.User, id, {
@@ -238,15 +247,12 @@ app.get("/user/sync", async (req: Request, res: Response) => {
   // streak: PositiveNumberSchema,
 //Create group.
 app.post("/group", async (req: Request, res: Response) => {
-  const groupNameResult = safeParse(NameSchema, req.body.group)
-  const userIdResult = safeParse(UuidSchema, req.body.user) //might change
-  if(groupNameResult.success && userIdResult.success){
-    const groupName = groupNameResult.output
-    const userId = userIdResult.output
+  const parseRes = parseInput(GroupCreateRequestSchema, req, res)
+  if(parseRes.success){
     const mockObj = {
-      name: groupName,
-      users: [new ObjectId(userId)],
-      interval: Interval.Weekly,
+      name: parseRes.name,
+      users: [new ObjectId(parseRes.uuid)],
+      interval: parseRes.interval,
       streak: 0
     }
     //Create group
@@ -256,31 +262,25 @@ app.post("/group", async (req: Request, res: Response) => {
     if (groupId == null)
       res.status(500).send("Failed to insert")
     else{
-      update(collectionEnum.User, userId, {
+      update(collectionEnum.User, parseRes.uuid, {
         $push: {groups: new ObjectId(groupId)}
       })
-      res.send(groupId)
+      parseOutput(GroupCreateRequestSchema, {uuid: groupId.toString()}, res)
     }
-  }
-  else{
-    res.status(400).send("Failed to parse input")
   }
 });
 
 //Get group info.
 app.get("/group", async (req: Request, res: Response) => {
-  const groupIdResult = safeParse(UuidSchema, req.body.group)
-  if(groupIdResult.success){
-    const groupId = groupIdResult.output
-    const data = await get(collectionEnum.Group, groupId)
+  const parseRes = parseInput(GroupGetRequestSchema, req, res)
+  if(parseRes.success){
+    const data = await get(collectionEnum.Group, parseRes.uuid)
     if (data == null){
       res.status(404).send("group not found")
       return
     }
-    res.send(convertObj(data))
-  }
-  else{
-    res.status(400).send("Failed to parse input")
+    parseOutput(GroupGetRequestSchema, data, res)
+    // res.send(convertObj(data))
   }
 });
 
