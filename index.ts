@@ -247,7 +247,7 @@ app.get("/group", async (req: Request, res: Response) => {
   }
 });
 
-//Delete group.
+//Delete group. TODO: this feature should be removed. A groups should be removed if the last user leaves it 
 app.delete("/group", async (req: Request, res: Response) => {
   const idResult = safeParse(UuidSchema, req.body.groupId)
   if(idResult.success){
@@ -313,7 +313,9 @@ app.get("/group/invite", async (req: Request, res: Response) => {
   }
 });
 
-//Delete a group invitation.
+//Delete a group invitation. 
+//No longer needed, old implementation is part of post/group/invite/respond
+/*
 app.delete("/group/invite", async (req: Request, res: Response) => {
   const inviteIdResult = safeParse(UuidSchema,req.body.uuid)
   if(inviteIdResult.success){
@@ -325,20 +327,25 @@ app.delete("/group/invite", async (req: Request, res: Response) => {
     res.status(400).send("Failed to parse input")
   }
 });
+*/
 
 //group/invite/respond ---------------
-//Respond to invite.
+//Respond to invite. 
 app.post("/group/invite/respond", async (req: Request, res: Response) => {
   const userIdResult = safeParse(UuidSchema, req.body.user)
   const groupIdResult = safeParse(UuidSchema, req.body.group)
   const inviteIdResult = safeParse(UuidSchema, req.body.uuid)
   if(userIdResult.success && groupIdResult.success && inviteIdResult.success){
-    const userId = userIdResult.output
-    const groupId = groupIdResult.output
-    const inviteId = inviteIdResult.output
-    update(collectionEnum.Group, groupId, { $push: {users: new ObjectId(userId)}})
-    update(collectionEnum.User, userId, { $push: {groups: new ObjectId(userId)}})
-    const result = await remove(collectionEnum.Invite, {_id: inviteId})
+    if(req.body.respond == "Y"){
+      const userId = userIdResult.output
+      update(collectionEnum.Group, groupIdResult.output, {
+        $push: {users: new ObjectId(userId)}
+      })
+      update(collectionEnum.User, userId, {
+        $push: {groups: new ObjectId(userId)}
+      })
+    }
+    const result = await remove(collectionEnum.Invite, {_id: inviteIdResult.output})
     res.send(result)
   }
   else{
@@ -354,11 +361,11 @@ app.post("/group/remove", async (req: Request, res: Response) => {
   if(userIdResult.success && groupIdResult.success){
     const userId = userIdResult.output
     const groupId = groupIdResult.output
-    update(collectionEnum.Group, groupId, 
-      {$pull: {users: new ObjectId(userId)} 
+    update(collectionEnum.Group, groupId, {
+      $pull: {users: new ObjectId(userId)} 
     })
-    update(collectionEnum.User,  userId, 
-      {$pull: {groups: new ObjectId(groupId)} 
+    update(collectionEnum.User,  userId, {
+      $pull: {groups: new ObjectId(groupId)} 
     })
     res.send("Success")
   }    
