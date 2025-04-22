@@ -134,9 +134,9 @@ app.post("/user", async (req: Request, res: Response) => {
     console.log(result.issues)
     res.status(400).send(result.issues)
     return
-
   }
 });
+
 //Get user information.
 app.get("/user", async (req: Request, res: Response) => {
   const idResult = safeParse(UuidSchema,req.body.uuid)
@@ -146,8 +146,9 @@ app.get("/user", async (req: Request, res: Response) => {
     if(result== null){
       res.status(404).send("Failed to get user");  
     }
-    else
+    else{
       res.send(convertObj(result))
+    }
   }
   else{
     res.status(400).send("Failed to parse input")
@@ -162,7 +163,6 @@ app.post("/user/sync", async (req: Request, res: Response) => {
     console.log("hit")
     if(parseRes.success){
       const id:string = parseRes.output
-
       const result = await update(collectionEnum.User, id, {
         $currentDate: {
           lastSync: true
@@ -172,10 +172,9 @@ app.post("/user/sync", async (req: Request, res: Response) => {
     }
     else{
       res.status(400).send("failed to parse input")
-
     }
-    
 });
+
 //Get which information is required for the specified goals.
 app.get("/user/sync", async (req: Request, res: Response) => {
   const userIdResult = safeParse(UuidSchema,req.body.user)
@@ -186,7 +185,6 @@ app.get("/user/sync", async (req: Request, res: Response) => {
     const goals = []
     for await (const doc of data){
       goals.push(doc)
-
     }
     res.send(JSON.stringify(goals))
   }
@@ -230,12 +228,11 @@ app.post("/group", async (req: Request, res: Response) => {
   else{
     res.status(400).send("Failed to parse input")
   }
-
 });
+
 //Get group info.
 app.get("/group", async (req: Request, res: Response) => {
   const groupIdResult = safeParse(UuidSchema, req.body.group)
-
   if(groupIdResult.success){
     const groupId = groupIdResult.output
     const data = await get(collectionEnum.Group, groupId)
@@ -248,9 +245,8 @@ app.get("/group", async (req: Request, res: Response) => {
   else{
     res.status(400).send("Failed to parse input")
   }
-
-
 });
+
 //Delete group.
 app.delete("/group", async (req: Request, res: Response) => {
   const idResult = safeParse(UuidSchema, req.body.groupId)
@@ -261,17 +257,15 @@ app.delete("/group", async (req: Request, res: Response) => {
       res.status(404).send("Failed to find group")
     else{
       let idArr: ObjectId[] = [] 
-      for(const user of group.users)
+      for(const user of group.users){
         idArr.push(new ObjectId(user))
-
+      }
       updateFilter(collectionEnum.User, 
         {_id: {$in: idArr}}, 
         {$pull: {groups: new ObjectId(idResult.output)} 
-      } )
+      })
       remove(collectionEnum.Group, {_id: id})
-
       remove(collectionEnum.Goal, {group: id})
-
       res.send()
     }
   }
@@ -296,6 +290,7 @@ app.post("/group/invite", async (req: Request, res: Response) => {
     res.status(400).send(inviteResult.issues)
   }
 });
+
 //Get group invitations.
 app.get("/group/invite", async (req: Request, res: Response) => {
   const userIdResult = safeParse(UuidSchema,req.body.user)
@@ -312,10 +307,12 @@ app.get("/group/invite", async (req: Request, res: Response) => {
       dataArray.push(invite)
     }
     res.send(JSON.stringify(dataArray))
-  } else {
+  } 
+  else{
     res.status(400).send("Failed to parse input")
   }
 });
+
 //Delete a group invitation.
 app.delete("/group/invite", async (req: Request, res: Response) => {
   const inviteIdResult = safeParse(UuidSchema,req.body.uuid)
@@ -323,7 +320,8 @@ app.delete("/group/invite", async (req: Request, res: Response) => {
     const inviteuuid = new ObjectId(inviteIdResult.output)
     const result = await remove(collectionEnum.Invite, {_id: inviteuuid})
     res.send(result)
-  } else {
+  } 
+  else{
     res.status(400).send("Failed to parse input")
   }
 });
@@ -382,10 +380,12 @@ app.post("/group/goal", async (req: Request, res: Response) => {
     const goal = groupGoalIdResult.output
     const result = await insert(collectionEnum.Goal,goal)
     res.send(result)
-  } else {
+  } 
+  else{
     res.status(400).send("Failed to parse input")
   }
 });
+
 //Delete goal.
 app.delete("/group/goal", async (req: Request, res: Response) => {
   const goalIdResult = safeParse(UuidSchema,req.body.uuid)
