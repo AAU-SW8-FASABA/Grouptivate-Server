@@ -255,7 +255,7 @@ app.get("/group", async (req: Request, res: Response) => {
 app.delete("/group", async (req: Request, res: Response) => {
   const idResult = safeParse(UuidSchema, req.body.groupId)
   if(idResult.success){
-    console.log(idResult.output)
+    const id = idResult.output
     const group = await get(collectionEnum.Group, idResult.output)
     if(group?.users == null)
       res.status(404).send("Failed to find group")
@@ -268,12 +268,15 @@ app.delete("/group", async (req: Request, res: Response) => {
         {_id: {$in: idArr}}, 
         {$pull: {groups: new ObjectId(idResult.output)} 
       } )
-      const result = await remove(collectionEnum.Group, {_id: idResult.output})
-      res.send(result)
+      remove(collectionEnum.Group, {_id: id})
+
+      remove(collectionEnum.Goal, {group: id})
+
+      res.send()
     }
   }
   else{
-    res.status(400).send("Failed to parse input")
+    res.status(400).send(idResult.issues)
   }
 });
 
