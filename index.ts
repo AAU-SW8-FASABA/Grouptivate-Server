@@ -185,6 +185,7 @@ app.post("/user", async (req: Request, res: Response) => {
     res.status(400).send(result.issues)
   }
 });
+
 //Get user information.
 app.get("/user", async (req: Request, res: Response) => {
 
@@ -212,7 +213,6 @@ app.post("/user/sync", async (req: Request, res: Response) => {
     console.log("hit")
     if(parseRes.success){
       const id:string = parseRes.output
-
       const result = await update(collectionEnum.User, id, {
         $currentDate: {
           lastSync: true
@@ -222,10 +222,9 @@ app.post("/user/sync", async (req: Request, res: Response) => {
     }
     else{
       res.status(400).send("failed to parse input")
-
     }
-    
 });
+
 //Get which information is required for the specified goals.
 app.get("/user/sync", async (req: Request, res: Response) => {
   const userIdResult = safeParse(UuidSchema,req.body.user)
@@ -236,7 +235,6 @@ app.get("/user/sync", async (req: Request, res: Response) => {
     const goals = []
     for await (const doc of data){
       goals.push(doc)
-
     }
     res.send(JSON.stringify(goals))
   }
@@ -280,12 +278,11 @@ app.post("/group", async (req: Request, res: Response) => {
   else{
     res.status(400).send("Failed to parse input")
   }
-
 });
+
 //Get group info.
 app.get("/group", async (req: Request, res: Response) => {
   const groupIdResult = safeParse(UuidSchema, req.body.group)
-
   if(groupIdResult.success){
     const groupId = groupIdResult.output
     const data = await get(collectionEnum.Group, groupId)
@@ -298,9 +295,8 @@ app.get("/group", async (req: Request, res: Response) => {
   else{
     res.status(400).send("Failed to parse input")
   }
-
-
 });
+
 //Delete group.
 app.delete("/group", async (req: Request, res: Response) => {
   const idResult = safeParse(UuidSchema, req.body.groupId)
@@ -311,17 +307,15 @@ app.delete("/group", async (req: Request, res: Response) => {
       res.status(404).send("Failed to find group")
     else{
       let idArr: ObjectId[] = [] 
-      for(const user of group.users)
+      for(const user of group.users){
         idArr.push(new ObjectId(user))
-
+      }
       updateFilter(collectionEnum.User, 
         {_id: {$in: idArr}}, 
         {$pull: {groups: new ObjectId(idResult.output)} 
-      } )
+      })
       remove(collectionEnum.Group, {_id: id})
-
       remove(collectionEnum.Goal, {group: id})
-
       res.send()
     }
   }
@@ -346,15 +340,15 @@ app.post("/group/invite", async (req: Request, res: Response) => {
     res.status(400).send(inviteResult.issues)
   }
 });
+
 //Get group invitations.
 app.get("/group/invite", async (req: Request, res: Response) => {
   const userIdResult = safeParse(UuidSchema,req.body.user)
   if(userIdResult.success){
-    const userid:Uuid = userIdResult.output
-
-    const data = await db.collection(collectionEnum.Invite).find({user: userid})
+    const userId:Uuid = userIdResult.output
+    const data = await db.collection(collectionEnum.Invite).find({user: userId})
     if (data == null){
-      res.send("no invites found")
+      res.status(404).send("no invites found")
       return
     }
     const dataArray: Invite[] = []
@@ -363,17 +357,22 @@ app.get("/group/invite", async (req: Request, res: Response) => {
       dataArray.push(invite)
     }
     res.send(JSON.stringify(dataArray))
+  } 
+  else{
+    res.status(400).send("Failed to parse input")
   }
 });
+
 //Delete a group invitation.
 app.delete("/group/invite", async (req: Request, res: Response) => {
-  try{
-    const inviteId = parse(UuidSchema,req.body.uuid)
-    const inviteuuid = new ObjectId(inviteId)
+  const inviteIdResult = safeParse(UuidSchema,req.body.uuid)
+  if(inviteIdResult.success){
+    const inviteuuid = new ObjectId(inviteIdResult.output)
     const result = await remove(collectionEnum.Invite, {_id: inviteuuid})
     res.send(result)
-  } catch(error){
-    res.send(error)
+  } 
+  else{
+    res.status(400).send("Failed to parse input")
   }
 });
 
@@ -400,53 +399,54 @@ app.post("/group/invite/respond", async (req: Request, res: Response) => {
 //group/remove ----------------------
 //Remove user from group.
 app.post("/group/remove", async (req: Request, res: Response) => {
-  try{
-    const user:string = parse(UuidSchema,req.body.user)
-    const group:string = parse(UuidSchema,req.body.group)
-
-    update(collectionEnum.Group, group, 
-      {$pull: {users: new ObjectId(user)} 
+  const userIdResult = safeParse(UuidSchema,req.body.user)
+  const groupIdResult = safeParse(UuidSchema,req.body.group)
+  if(userIdResult.success && groupIdResult.success){
+    const userId = userIdResult.output
+    const groupId = groupIdResult.output
+    update(collectionEnum.Group, groupId, 
+      {$pull: {users: new ObjectId(userId)} 
     })
-    update(collectionEnum.User,  user, 
-      {$pull: {groups: new ObjectId(group)} 
+    update(collectionEnum.User,  userId, 
+      {$pull: {groups: new ObjectId(groupId)} 
     })
     res.send("Success")
-  } catch (e){
-    res.send(e)
+  }    
+  else{
+    res.status(400).send("Failed to parse input")
   }
 });
 
 //Group/goal ------------------------
 //Create goal.
 app.post("/group/goal", async (req: Request, res: Response) => {
-  try{
-    if("user" in req.body){
-      const goal:IndividualGoal = parse(IndividualGoalSchema,req.body)
-      await insert(collectionEnum.Goal,goal)
-    } else {
-      const goal:GroupGoal = parse(GroupGoalSchema,req.body)
-      await insert(collectionEnum.Goal,goal)
-    }
-    res.send("Success")
-  } catch (error){
-    res.send(error)
+  const indiGoalIdResult = safeParse(IndividualGoalSchema, req.body)
+  const groupGoalIdResult = safeParse(GroupGoalSchema, req.body) 
+  if(indiGoalIdResult.success){
+    const goal = indiGoalIdResult.output
+    const result = await insert(collectionEnum.Goal,goal)
+    res.send(result)
+  } else if(groupGoalIdResult.success){
+    const goal = groupGoalIdResult.output
+    const result = await insert(collectionEnum.Goal,goal)
+    res.send(result)
+  } 
+  else{
+    res.status(400).send("Failed to parse input")
   }
 });
-//Delete goal. TODO: do we want this to remove all goals? det er det den gør lige nu :)
-app.delete("/group/goal", async (req: Request, res: Response) => {
 
-  const idResult = safeParse(UuidSchema,req.body.uuid)
-  if(idResult.success){
-    const id:string = idResult.output
-    
-    // await remove(collectionEnum.Group, req.body); //skal være en update på goal array og ikke slette gruppen
-    await remove(collectionEnum.Goal, {"group": id})
-    res.send("success")
+//Delete goal.
+app.delete("/group/goal", async (req: Request, res: Response) => {
+  const goalIdResult = safeParse(UuidSchema,req.body.uuid)
+  if(goalIdResult.success){
+    const goalId = goalIdResult.output
+    const result = await remove(collectionEnum.Goal, {_id: goalId})
+    res.send(result)
   }
   else{
     res.status(400).send("Failed to parse input")
   }
-  
 });
 
 app.listen(PORT, () => {
