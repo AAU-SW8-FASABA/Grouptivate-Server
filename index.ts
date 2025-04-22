@@ -330,7 +330,7 @@ app.post("/group/invite", async (req: Request, res: Response) => {
   const inviteResult = safeParse(InviteSchema,req.body)
   if(inviteResult.success){
     const invObj: Object = {
-      user: new ObjectId(inviteResult.output.user),
+      invited: new ObjectId(inviteResult.output.invited),
       group: new ObjectId(inviteResult.output.group)
     }
     await insert(collectionEnum.Invite, invObj)
