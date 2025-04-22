@@ -6,7 +6,7 @@ import { error, group, timeStamp } from "node:console";
 import {safeParse, parse, uuid, object}  from "valibot"
 import {GroupSchema, type Group} from "./Grouptivate-API/schemas/Group"
 import  {UserSchema, UserGetRequestSchema, UserCreateRequestSchema} from "./Grouptivate-API/schemas/User"
-import { InviteSchema, type Invite } from "./Grouptivate-API/schemas/Invite";
+import { InviteCreateRequestSchema, InviteSchema, type Invite } from "./Grouptivate-API/schemas/Invite";
 import { GoalSchema, GroupGoalSchema, IndividualGoalSchema, type Goal, type GroupGoal, type IndividualGoal } from "./Grouptivate-API/schemas/Goal";
 import { NameSchema } from "./Grouptivate-API/schemas/Name";
 import { UuidSchema, type Uuid } from "./Grouptivate-API/schemas/Uuid";
@@ -152,6 +152,7 @@ function parseOutput(schema: RequestSchema<SearchParametersSchema, any, any>, da
       return res.status(400).send(parseRes.issues)
     }
   }
+  console.log(schema.responseBody)
   return res.status(400).send("Failed to read schema")
 }
 
@@ -159,7 +160,7 @@ function parseOutput(schema: RequestSchema<SearchParametersSchema, any, any>, da
 //Create user
 app.post("/user", async (req: Request, res: Response) => {
   
-  const result = parseInput(UserCreateRequestSchema ,req, res)
+  const result = parseInput(UserCreateRequestSchema, req, res)
     
   if(result.success){
     const id = await insert(collectionEnum.User, {
@@ -283,7 +284,7 @@ app.get("/group", async (req: Request, res: Response) => {
   }
 });
 
-//Delete group. TODO: this feature should be removed. A groups should be removed if the last user leaves it 
+//Delete group. TODO: this feature should be changed. A groups should be removed if the last user leaves it 
 app.delete("/group", async (req: Request, res: Response) => {
   const idResult = safeParse(UuidSchema, req.body.groupId)
   if(idResult.success){
@@ -313,17 +314,18 @@ app.delete("/group", async (req: Request, res: Response) => {
 //Group/invite ------------------
 //Create a group invitation.
 app.post("/group/invite", async (req: Request, res: Response) => {
-  const inviteResult = safeParse(InviteSchema,req.body)
-  if(inviteResult.success){
-    const invObj: Object = {
-      invited: new ObjectId(inviteResult.output.invited),
-      group: new ObjectId(inviteResult.output.group)
+  const result = parseInput(InviteCreateRequestSchema,req, res)
+  if(result.success){
+    const id = await insert(collectionEnum.Invite, {
+      group: result.group,
+      invited: result.invited,
+      invitee: result.invitee
+    })
+    const response = {
+      uuid: id.toString(),
+      
     }
-    await insert(collectionEnum.Invite, invObj)
-    res.send("success")
-  }
-  else{
-    res.status(400).send(inviteResult.issues)
+    parseOutput(InviteCreateRequestSchema, response, res)
   }
 });
 
