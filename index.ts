@@ -1,7 +1,7 @@
 import db from "./src/db"
 import express, { response } from "express";
 import type { Request, Response } from "express";
-import { ObjectId, ReturnDocument, Timestamp, type Document, type WithId } from "mongodb";
+import { FindCursor, ObjectId, ReturnDocument, Timestamp, type Document, type WithId } from "mongodb";
 import { error, group, timeStamp } from "node:console";
 import {safeParse, parse, uuid, object}  from "valibot"
 import {GroupCreateRequestSchema, GroupGetRequestSchema, GroupRemoveRequestSchema, GroupSchema, type Group} from "./Grouptivate-API/schemas/Group"
@@ -41,6 +41,18 @@ async function get(_collection: collectionEnum, id: string) {
   } catch (e) {
     console.log(e)
   }
+}
+async function getFilter(_collection: collectionEnum, filter: object, project?: object) {
+  const collection = db.collection(_collection);
+  if(project)
+    return collection.find(filter).project(project)
+  return collection.find(filter)
+}
+
+async function existFilter(_collection: collectionEnum, filter: object) {
+  const collection = db.collection(_collection);
+
+  return collection.countDocuments(filter)
 }
 
 async function update(_collection: collectionEnum, id: string, data: object) {
@@ -408,10 +420,17 @@ app.post("/group/remove", async (req: Request, res: Response) => {
     update(collectionEnum.Group, groupId, {
       $pull: {users: userId} 
     })
-    remove(collectionEnum.Group, {users : {$size: 0}})
     update(collectionEnum.User,  userId, {
       $pull: {groups: groupId} 
     })
+    const test = await existFilter(collectionEnum.Group, {users : {$size: 0}})
+
+    const emptyGroups = await getFilter(collectionEnum.Group, {users : {$size: 0}}, {_id: 1})
+    for(const group of await emptyGroups.toArray()){
+      remove(collectionEnum.Goal, {group: group._id.toString()})
+    }
+
+
     parseOutput(GroupRemoveRequestSchema, {},res)
   }
 });
