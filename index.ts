@@ -32,7 +32,7 @@ async function get(_collection: collectionEnum, id: string) {
         return res;
       case collectionEnum.Invite:
         //const querya = "user: uuid};
-        const invites = await collection.findOne({user: uuid})        
+        const invites = await collection.findOne({_id: uuid})        
         return invites;
       default:
         throw error("OutOfBounds");
@@ -308,31 +308,31 @@ app.get("/group", async (req: Request, res: Response) => {
 });
 
 //Delete group. TODO: this feature should be changed. A groups should be removed if the last user leaves it 
-app.delete("/group", async (req: Request, res: Response) => {
-  const idResult = safeParse(UuidSchema, req.body.groupId)
-  if(idResult.success){
-    const id = idResult.output
-    const group = await get(collectionEnum.Group, idResult.output)
-    if(group?.users == null)
-      res.status(404).send("Failed to find group")
-    else{
-      let idArr: ObjectId[] = [] 
-      for(const user of group.users){
-        idArr.push(new ObjectId(user))
-      }
-      updateFilter(collectionEnum.User, 
-        {_id: {$in: idArr}}, 
-        {$pull: {groups: new ObjectId(idResult.output)} 
-      })
-      remove(collectionEnum.Group, {_id: id})
-      remove(collectionEnum.Goal, {group: id})
-      res.send()
-    }
-  }
-  else{
-    res.status(400).send(idResult.issues)
-  }
-});
+// app.delete("/group", async (req: Request, res: Response) => {
+//   const idResult = safeParse(UuidSchema, req.body.groupId)
+//   if(idResult.success){
+//     const id = idResult.output
+//     const group = await get(collectionEnum.Group, idResult.output)
+//     if(group?.users == null)
+//       res.status(404).send("Failed to find group")
+//     else{
+//       let idArr: ObjectId[] = [] 
+//       for(const user of group.users){
+//         idArr.push(new ObjectId(user))
+//       }
+//       updateFilter(collectionEnum.User, 
+//         {_id: {$in: idArr}}, 
+//         {$pull: {groups: new ObjectId(idResult.output)} 
+//       })
+//       remove(collectionEnum.Group, {_id: id})
+//       remove(collectionEnum.Goal, {group: id})
+//       res.send()
+//     }
+//   }
+//   else{
+//     res.status(400).send(idResult.issues)
+//   }
+// });
 
 //Group/invite ------------------
 //Create a group invitation.
