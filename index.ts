@@ -124,27 +124,33 @@ function parseInput(inputSchema: RequestSchema<SearchParametersSchema, any, any>
   }
   if(Object.keys(inputSchema.searchParams).length > 0){
     const paramSchema = inputSchema.searchParams
-    console.log(req.query)
     for( const [key,value] of Object.entries(paramSchema)) {
-      const parse = safeParse(value, {[key] :req.query[key]})
+      // console.log("Param:")
+      // console.log({[key] :req.query[key]})
+      const parse = safeParse(value, req.query[key])
       parseRes.push(parse.success)
-      if(!parse.success)
-        result.issues.push(parse.issues)
-      Object.assign(result, parse.output)
+      if(!parse.success){
+        console.log("Param error")
+        console.log(paramSchema)
+        console.log(req.query)
+        result.issues.concat(parse.issues)
+      }
+      result[key] = parse.output
     }
-    result.success = !parseRes.every(res => {
-      res === true
-    })
+
+    result.success = parseRes.every(v => v === true)
+
   }
   if(inputSchema?.requestBody && Object.keys(inputSchema?.requestBody).length > 0){
-    console.log("should this happen?")
     const parseBody = safeParse(inputSchema.requestBody, req.body)
     result.success = parseBody.success && (result?.success ?? true)
-    result.issues.push(parseBody.issues)
+    if(!result.success)
+      result.issues.concat(parseBody.issues)
     Object.assign(result, parseBody.output)
   }
-  if(!result.success)
+  if(!result.success){
     res.status(400).send(result.issues)
+  }
   return result
 }
 
@@ -316,10 +322,11 @@ app.delete("/group", async (req: Request, res: Response) => {
 app.post("/group/invite", async (req: Request, res: Response) => {
   const result = parseInput(InviteCreateRequestSchema,req, res)
   if(result.success){
+    console.log(result)
     const id = await insert(collectionEnum.Invite, {
       group: result.group,
       invited: result.invited,
-      invitee: result.invitee
+      user: result.user
     })
     const response = {
       uuid: id.toString(),
