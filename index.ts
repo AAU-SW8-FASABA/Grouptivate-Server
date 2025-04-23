@@ -4,7 +4,7 @@ import type { Request, Response } from "express";
 import { ObjectId, ReturnDocument, Timestamp, type Document, type WithId } from "mongodb";
 import { error, group, timeStamp } from "node:console";
 import {safeParse, parse, uuid, object}  from "valibot"
-import {GroupCreateRequestSchema, GroupGetRequestSchema, GroupSchema, type Group} from "./Grouptivate-API/schemas/Group"
+import {GroupCreateRequestSchema, GroupGetRequestSchema, GroupRemoveRequestSchema, GroupSchema, type Group} from "./Grouptivate-API/schemas/Group"
 import  {UserSchema, UserGetRequestSchema, UserCreateRequestSchema} from "./Grouptivate-API/schemas/User"
 import { InviteCreateRequestSchema, InviteSchema, type Invite } from "./Grouptivate-API/schemas/Invite";
 import { GoalSchema, GroupGoalSchema, IndividualGoalSchema, type Goal, type GroupGoal, type IndividualGoal } from "./Grouptivate-API/schemas/Goal";
@@ -401,21 +401,18 @@ app.post("/group/invite/respond", async (req: Request, res: Response) => {
 //group/remove ----------------------
 //Remove user from group.
 app.post("/group/remove", async (req: Request, res: Response) => {
-  const userIdResult = safeParse(UuidSchema,req.body.user)
-  const groupIdResult = safeParse(UuidSchema,req.body.group)
-  if(userIdResult.success && groupIdResult.success){
-    const userId = userIdResult.output
-    const groupId = groupIdResult.output
+  const parseRes = parseInput(GroupRemoveRequestSchema, req, res)
+  if(parseRes.success){
+    const groupId = parseRes.group
+    const userId = parseRes.user
     update(collectionEnum.Group, groupId, {
-      $pull: {users: new ObjectId(userId)} 
+      $pull: {users: userId} 
     })
+    remove(collectionEnum.Group, {users : {$size: 0}})
     update(collectionEnum.User,  userId, {
-      $pull: {groups: new ObjectId(groupId)} 
+      $pull: {groups: groupId} 
     })
-    res.send("Success")
-  }    
-  else{
-    res.status(400).send("Failed to parse input")
+    parseOutput(GroupRemoveRequestSchema, {},res)
   }
 });
 
