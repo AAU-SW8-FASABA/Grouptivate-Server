@@ -286,7 +286,7 @@ app.post("/group", async (req: Request, res: Response) => {
       res.status(500).send("Failed to insert")
     else{
       update(collectionEnum.User, parseRes.uuid, {
-        $push: {groups: new ObjectId(groupId)}
+        $push: {groups: groupId}
       })
       parseOutput(GroupCreateRequestSchema, {uuid: groupId.toString()}, res)
     }
@@ -357,8 +357,8 @@ app.post("/group/invite", async (req: Request, res: Response) => {
 app.get("/group/invite", async (req: Request, res: Response) => {
   const parseRes = parseInput(InviteGetRequestSchema, req, res)
   if(parseRes.success){
-    const userId = parseRes.uuid
-    const data = await (await getFilter(collectionEnum.Invite, {user: userId}, {invited: 0})).toArray()
+    const userId = parseRes.user
+    const data = await (await getFilter(collectionEnum.Invite, {invited: userId}, {invited: 0})).toArray()
     parseOutput(InviteGetRequestSchema, data, res)
   }
 });
@@ -389,10 +389,10 @@ app.post("/group/invite/respond", async (req: Request, res: Response) => {
     if(req.body.respond == "Y"){
       const userId = userIdResult.output
       update(collectionEnum.Group, groupIdResult.output, {
-        $push: {users: new ObjectId(userId)}
+        $push: {users: userId}
       })
       update(collectionEnum.User, userId, {
-        $push: {groups: new ObjectId(userId)}
+        $push: {groups: userId}
       })
     }
     const result = await remove(collectionEnum.Invite, {_id: inviteIdResult.output})
