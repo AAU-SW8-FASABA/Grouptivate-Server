@@ -423,8 +423,6 @@ app.post("/group/remove", async (req: Request, res: Response) => {
     update(collectionEnum.User,  userId, {
       $pull: {groups: groupId} 
     })
-    const test = await existFilter(collectionEnum.Group, {users : {$size: 0}})
-
     const emptyGroups = await getFilter(collectionEnum.Group, {users : {$size: 0}}, {_id: 1})
     for(const group of await emptyGroups.toArray()){
       remove(collectionEnum.Goal, {group: group._id.toString()})
