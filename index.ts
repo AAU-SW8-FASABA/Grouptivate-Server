@@ -257,7 +257,7 @@ app.post("/group", async (req: Request, res: Response) => {
   if(parseRes.success){
     const mockObj = {
       name: parseRes.name,
-      users: [new ObjectId(parseRes.uuid)],
+      users: [parseRes.user],
       interval: parseRes.interval,
       streak: 0
     }
