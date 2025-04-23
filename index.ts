@@ -1,12 +1,12 @@
 import db from "./src/db"
 import express, { response } from "express";
 import type { Request, Response } from "express";
-import { ObjectId, ReturnDocument, Timestamp, type Document, type WithId } from "mongodb";
+import { FindCursor, ObjectId, ReturnDocument, Timestamp, type Document, type WithId } from "mongodb";
 import { error, group, timeStamp } from "node:console";
 import {safeParse, parse, uuid, object}  from "valibot"
 import {GroupCreateRequestSchema, GroupGetRequestSchema, GroupRemoveRequestSchema, GroupSchema, type Group} from "./Grouptivate-API/schemas/Group"
 import  {UserSchema, UserGetRequestSchema, UserCreateRequestSchema} from "./Grouptivate-API/schemas/User"
-import { InviteCreateRequestSchema, InviteGetRequestSchema, InviteRespondRequestSchema, InviteSchema, type Invite } from "./Grouptivate-API/schemas/Invite";
+import { InviteCreateRequestSchema, InviteGetRequestSchema, InviteSchema, type Invite } from "./Grouptivate-API/schemas/Invite";
 import { GoalSchema, GroupGoalSchema, IndividualGoalSchema, type Goal, type GroupGoal, type IndividualGoal } from "./Grouptivate-API/schemas/Goal";
 import { NameSchema } from "./Grouptivate-API/schemas/Name";
 import { UuidSchema, type Uuid } from "./Grouptivate-API/schemas/Uuid";
@@ -33,7 +33,7 @@ async function get(_collection: collectionEnum, id: string) {
         return res;
       case collectionEnum.Invite:
         //const querya = "user: uuid};
-        const invites = await collection.findOne({user: uuid})        
+        const invites = await collection.findOne({_id: uuid})        
         return invites;
       default:
         throw error("OutOfBounds");
@@ -42,6 +42,18 @@ async function get(_collection: collectionEnum, id: string) {
   } catch (e) {
     console.log(e)
   }
+}
+async function getFilter(_collection: collectionEnum, filter: object, project?: object) {
+  const collection = db.collection(_collection);
+  if(project)
+    return collection.find(filter).project(project)
+  return collection.find(filter)
+}
+
+async function existFilter(_collection: collectionEnum, filter: object) {
+  const collection = db.collection(_collection);
+
+  return collection.countDocuments(filter)
 }
 
 async function update(_collection: collectionEnum, id: string, data: object) {
@@ -92,16 +104,16 @@ async function remove(_collection: collectionEnum, filter: object) { //TODO: che
 function convertObj(inputobj: WithId<Document>){
   let obj: Record<any,any> = inputobj
   obj.uuid = inputobj["_id"].toString()
-  if("groups" in inputobj){
-    for(const i in inputobj["groups"]){
-      inputobj["groups"][i] = inputobj["groups"][i].toString()
-    }
-  }
-  if("users" in inputobj){
-    for(const i in inputobj["users"]){
-      inputobj["users"][i] = inputobj["users"][i].toString()
-    }
-  }
+  // if("groups" in inputobj){
+  //   for(const i in inputobj["groups"]){
+  //     inputobj["groups"][i] = inputobj["groups"][i].toString()
+  //   }
+  // }
+  // if("users" in inputobj){
+  //   for(const i in inputobj["users"]){
+  //     inputobj["users"][i] = inputobj["users"][i].toString()
+  //   }
+  // }
 
   delete obj["_id"]
   // console.log(obj)
@@ -134,7 +146,7 @@ function parseInput(inputSchema: RequestSchema<SearchParametersSchema, any, any>
         console.log("Param error")
         console.log(paramSchema)
         console.log(req.query)
-        result.issues.concat(parse.issues)
+        result.issues.push(parse.issues)
       }
       result[key] = parse.output
     }
@@ -156,10 +168,15 @@ function parseInput(inputSchema: RequestSchema<SearchParametersSchema, any, any>
 }
 
 
-function parseOutput(schema: RequestSchema<SearchParametersSchema, any, any>, data: WithId<Document> | object, res: Response){
+function parseOutput(schema: RequestSchema<SearchParametersSchema, any, any>, data: WithId<Document> | object |Array<object>, res: Response){
   if(schema.responseBody){
     if("_id" in data) 
       data = convertObj(data)
+    if(Array.isArray(data)){
+      for(const index in data){
+        data[index] = convertObj(data[index])
+      }
+    }
     const parseRes = safeParse(schema.responseBody, data)
     if(parseRes.success){
       // console.log(parseRes.output)
@@ -270,7 +287,7 @@ app.post("/group", async (req: Request, res: Response) => {
       res.status(500).send("Failed to insert")
     else{
       update(collectionEnum.User, parseRes.uuid, {
-        $push: {groups: new ObjectId(groupId)}
+        $push: {groups: groupId}
       })
       parseOutput(GroupCreateRequestSchema, {uuid: groupId.toString()}, res)
     }
@@ -292,31 +309,31 @@ app.get("/group", async (req: Request, res: Response) => {
 });
 
 //Delete group. TODO: this feature should be changed. A groups should be removed if the last user leaves it 
-app.delete("/group", async (req: Request, res: Response) => {
-  const idResult = safeParse(UuidSchema, req.body.groupId)
-  if(idResult.success){
-    const id = idResult.output
-    const group = await get(collectionEnum.Group, idResult.output)
-    if(group?.users == null)
-      res.status(404).send("Failed to find group")
-    else{
-      let idArr: ObjectId[] = [] 
-      for(const user of group.users){
-        idArr.push(new ObjectId(user))
-      }
-      updateFilter(collectionEnum.User, 
-        {_id: {$in: idArr}}, 
-        {$pull: {groups: new ObjectId(idResult.output)} 
-      })
-      remove(collectionEnum.Group, {_id: id})
-      remove(collectionEnum.Goal, {group: id})
-      res.send()
-    }
-  }
-  else{
-    res.status(400).send(idResult.issues)
-  }
-});
+// app.delete("/group", async (req: Request, res: Response) => {
+//   const idResult = safeParse(UuidSchema, req.body.groupId)
+//   if(idResult.success){
+//     const id = idResult.output
+//     const group = await get(collectionEnum.Group, idResult.output)
+//     if(group?.users == null)
+//       res.status(404).send("Failed to find group")
+//     else{
+//       let idArr: ObjectId[] = [] 
+//       for(const user of group.users){
+//         idArr.push(new ObjectId(user))
+//       }
+//       updateFilter(collectionEnum.User, 
+//         {_id: {$in: idArr}}, 
+//         {$pull: {groups: new ObjectId(idResult.output)} 
+//       })
+//       remove(collectionEnum.Group, {_id: id})
+//       remove(collectionEnum.Goal, {group: id})
+//       res.send()
+//     }
+//   }
+//   else{
+//     res.status(400).send(idResult.issues)
+//   }
+// });
 
 //Group/invite ------------------
 //Create a group invitation.
@@ -336,18 +353,12 @@ app.post("/group/invite", async (req: Request, res: Response) => {
 
 //Get group invitations.
 app.get("/group/invite", async (req: Request, res: Response) => {
-  const getResult = parseInput(InviteGetRequestSchema, req, res)
-  if(getResult.success){
-    const userId = getResult.user
-    const data = await db.collection(collectionEnum.Invite).find({invited: userId})
-    if (data == null){
-      res.status(404).send("no invites found")
-      return
-    }
-    
-    res.send(JSON.stringify(data))
-    //parseOutput(InviteGetRequestSchema, data, res)
-  } 
+  const parseRes = parseInput(InviteGetRequestSchema, req, res)
+  if(parseRes.success){
+    const userId = parseRes.user
+    const data = await (await getFilter(collectionEnum.Invite, {invited: userId}, {invited: 0})).toArray()
+    parseOutput(InviteGetRequestSchema, data, res)
+  }
 });
 
 //Delete a group invitation. 
@@ -401,11 +412,17 @@ app.post("/group/remove", async (req: Request, res: Response) => {
     update(collectionEnum.Group, groupId, {
       $pull: {users: userId} 
     })
-    remove(collectionEnum.Group, {users : {$size: 0}})
     update(collectionEnum.User,  userId, {
       $pull: {groups: groupId} 
     })
     parseOutput(GroupRemoveRequestSchema, {},res)
+
+    const emptyGroups = await getFilter(collectionEnum.Group, {users : {$size: 0}}, {_id: 1})
+    for(const group of await emptyGroups.toArray()){
+      remove(collectionEnum.Goal, {group: group._id.toString()})
+      remove(collectionEnum.Group, {_id: group._id.toString()})
+      console.log(group._id)
+    }
   }
 });
 
