@@ -6,7 +6,7 @@ import { error, group, timeStamp } from "node:console";
 import {safeParse, parse, uuid, object}  from "valibot"
 import {GroupCreateRequestSchema, GroupGetRequestSchema, GroupRemoveRequestSchema, GroupSchema, type Group} from "./Grouptivate-API/schemas/Group"
 import  {UserSchema, UserGetRequestSchema, UserCreateRequestSchema} from "./Grouptivate-API/schemas/User"
-import { InviteCreateRequestSchema, InviteSchema, type Invite } from "./Grouptivate-API/schemas/Invite";
+import { InviteCreateRequestSchema, InviteGetRequestSchema, InviteSchema, type Invite } from "./Grouptivate-API/schemas/Invite";
 import { GoalSchema, GroupGoalSchema, IndividualGoalSchema, type Goal, type GroupGoal, type IndividualGoal } from "./Grouptivate-API/schemas/Goal";
 import { NameSchema } from "./Grouptivate-API/schemas/Name";
 import { UuidSchema, type Uuid } from "./Grouptivate-API/schemas/Uuid";
@@ -103,16 +103,16 @@ async function remove(_collection: collectionEnum, filter: object) { //TODO: che
 function convertObj(inputobj: WithId<Document>){
   let obj: Record<any,any> = inputobj
   obj.uuid = inputobj["_id"].toString()
-  if("groups" in inputobj){
-    for(const i in inputobj["groups"]){
-      inputobj["groups"][i] = inputobj["groups"][i].toString()
-    }
-  }
-  if("users" in inputobj){
-    for(const i in inputobj["users"]){
-      inputobj["users"][i] = inputobj["users"][i].toString()
-    }
-  }
+  // if("groups" in inputobj){
+  //   for(const i in inputobj["groups"]){
+  //     inputobj["groups"][i] = inputobj["groups"][i].toString()
+  //   }
+  // }
+  // if("users" in inputobj){
+  //   for(const i in inputobj["users"]){
+  //     inputobj["users"][i] = inputobj["users"][i].toString()
+  //   }
+  // }
 
   delete obj["_id"]
   // console.log(obj)
@@ -145,7 +145,7 @@ function parseInput(inputSchema: RequestSchema<SearchParametersSchema, any, any>
         console.log("Param error")
         console.log(paramSchema)
         console.log(req.query)
-        result.issues.concat(parse.issues)
+        result.issues.push(parse.issues)
       }
       result[key] = parse.output
     }
@@ -167,10 +167,15 @@ function parseInput(inputSchema: RequestSchema<SearchParametersSchema, any, any>
 }
 
 
-function parseOutput(schema: RequestSchema<SearchParametersSchema, any, any>, data: WithId<Document> | object, res: Response){
+function parseOutput(schema: RequestSchema<SearchParametersSchema, any, any>, data: WithId<Document> | object |Array<object>, res: Response){
   if(schema.responseBody){
     if("_id" in data) 
       data = convertObj(data)
+    if(Array.isArray(data)){
+      for(const index in data){
+        data[index] = convertObj(data[index])
+      }
+    }
     const parseRes = safeParse(schema.responseBody, data)
     if(parseRes.success){
       // console.log(parseRes.output)
@@ -350,23 +355,11 @@ app.post("/group/invite", async (req: Request, res: Response) => {
 
 //Get group invitations.
 app.get("/group/invite", async (req: Request, res: Response) => {
-  const userIdResult = safeParse(UuidSchema,req.body.user)
-  if(userIdResult.success){
-    const userId:Uuid = userIdResult.output
-    const data = await db.collection(collectionEnum.Invite).find({user: userId})
-    if (data == null){
-      res.status(404).send("no invites found")
-      return
-    }
-    const dataArray: Invite[] = []
-    for await (const doc of data){
-      const invite:Invite = parse(InviteSchema, doc)
-      dataArray.push(invite)
-    }
-    res.send(JSON.stringify(dataArray))
-  } 
-  else{
-    res.status(400).send("Failed to parse input")
+  const parseRes = parseInput(InviteGetRequestSchema, req, res)
+  if(parseRes.success){
+    const userId = parseRes.uuid
+    const data = await (await getFilter(collectionEnum.Invite, {user: userId}, {invited: 0})).toArray()
+    parseOutput(InviteGetRequestSchema, data, res)
   }
 });
 
