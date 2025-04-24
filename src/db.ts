@@ -22,7 +22,7 @@ try {
 
 let db = conn.db('Grouptivate');
 
-export default db;
+// export default db;
 
 export async function get(_collection: collectionEnum, id: string) {
     try {

@@ -1,5 +1,5 @@
 import { parseInput, parseOutput } from '../../../src/schemaParsers';
-import db, {
+import {
     insert,
     collectionEnum,
     update,
@@ -12,8 +12,12 @@ import type { Request, Response } from 'express';
 import {
     GroupGoalCreateRequestSchema,
     GoalDeleteRequestSchema,
+    GoalPatchRequestSchema,
+    GroupGoalSchema,
 } from '../../../Grouptivate-API/schemas/Goal';
 import express from 'express';
+import { safeParse } from 'valibot';
+import { GroupSchema } from '../../../Grouptivate-API/schemas/Group';
 
 export const router = express.Router();
 
@@ -70,3 +74,22 @@ router.delete('/', async (req: Request, res: Response) => {
         parseOutput(GoalDeleteRequestSchema, {}, res);
     }
 });
+
+//Patch goal
+router.patch('/', async ( req: Request, res: Response) =>{
+    const parseRes = parseInput(GoalPatchRequestSchema, req, res)
+    if(parseRes.success){
+        //check if group or individual
+        console.log(parseRes)
+        if(safeParse(GroupGoalSchema,parseRes).success){
+            console.log("Group!")
+        }
+        else if(safeParse(GroupSchema, parseRes).success){
+            console.log("Individual!")
+        }
+        else{
+            console.log(":(")
+            //Should not be possible
+        }
+    }
+})
