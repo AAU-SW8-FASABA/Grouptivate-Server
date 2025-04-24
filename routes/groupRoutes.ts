@@ -93,22 +93,27 @@ router.post("/", async (req: Request, res: Response) => {
   router.post("/invite/respond", async (req: Request, res: Response) => {
     const inviteResponse = parseInput(InviteRespondRequestSchema, req, res)
     if(inviteResponse.success){
-      if(inviteResponse.requestBody == true){
+      const inviteId = inviteResponse.invite
+      if(inviteResponse.accepted == true){
         const userId = inviteResponse.user
-        const inviteId = inviteResponse.invite
-  
-        const groupId = await getFilter(collectionEnum.Invite, {_id: inviteId, invited: userId}, {group: 1})
-        //update(collectionEnum.Group, groupIdResult.output, {
-        //  $push: {users: new ObjectId(userId)}
-        //})
-        //update(collectionEnum.User, userId, {
-        //  $push: {groups: new ObjectId(userId)}
-        //})
+        const groupData = await get(collectionEnum.Invite, inviteId)
+        if (groupData == null){
+          res.status(404).send("Invite not found")
+          return
+        }
+        update(collectionEnum.Group, groupData['group'], {
+          $push: {users: userId}
+        })
+        update(collectionEnum.User, userId, {
+          $push: {groups: groupData['group']}
+        })
+        console.log("added group:" + groupData['group'] + ". To user:" + userId)
       }
-      //const result = await remove(collectionEnum.Invite, {_id: inviteIdResult.output})
-      res.send("result")
+      await remove(collectionEnum.Invite, {_id: inviteId})
+      parseOutput(InviteRespondRequestSchema, {}, res)
     }
   });
+  
   
   //group/remove ----------------------
   //Remove user from group.
