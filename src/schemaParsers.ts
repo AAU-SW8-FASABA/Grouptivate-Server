@@ -1,5 +1,5 @@
 import type { WithId } from 'mongodb';
-import { object, safeParse } from 'valibot';
+import { safeParse } from 'valibot';
 import type {
     RequestSchema,
     SearchParametersSchema,
