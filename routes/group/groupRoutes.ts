@@ -1,4 +1,4 @@
-import { parseInput, parseOutput } from '../../src/schemaParsers';
+import { parseInput, parseOutput, convertObj } from '../../src/schemaParsers';
 import {
     insert,
     collectionEnum,
@@ -16,6 +16,7 @@ import {
 import { router as inviteRouter } from './invite/inviteRoutes';
 import { router as goalRouter } from './goal/goalRoutes';
 import express from 'express';
+import { WithId } from 'mongodb';
 
 export const router = express.Router();
 
@@ -59,8 +60,16 @@ router.get('/', async (req: Request, res: Response) => {
             res.status(404).send('group not found');
             return;
         }
+
+        const goalObjArray: Array<WithId<Document>> = (await (
+            await getFilter(collectionEnum.Goal, { _id: { $in: data.goals } })
+        ).toArray()) as Array<WithId<Document>>;
+        const goalArray: Array<Record<string, any>> = [];
+        for (const index in goalObjArray) {
+            goalArray.push(convertObj(goalObjArray[index]));
+        }
+        data.goals = goalArray;
         parseOutput(GroupGetRequestSchema, data, res);
-        // res.send(convertObj(data))
     }
 });
 
