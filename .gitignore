@@ -2,3 +2,12 @@ node_modules
 Grouptivate-API
 build
 .env
+
+### macOS Patch ###
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# iCloud generated files
+*.icloud
