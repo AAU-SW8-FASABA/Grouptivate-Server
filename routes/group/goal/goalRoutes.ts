@@ -85,7 +85,6 @@ router.post('/individual', async (req: Request, res: Response) => {
             activity: parseRes.activity,
             metric: parseRes.metric, 
             target: parseRes.target,
-            group: parseRes.group,
             user: parseRes.user,
             progress: 0
         }

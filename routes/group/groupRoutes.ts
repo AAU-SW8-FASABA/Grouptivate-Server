@@ -29,6 +29,7 @@ router.post('/', async (req: Request, res: Response) => {
             name: parseRes.name,
             users: [parseRes.user],
             interval: parseRes.interval,
+            goals: [],
             streak: 0,
         };
         //Create group
