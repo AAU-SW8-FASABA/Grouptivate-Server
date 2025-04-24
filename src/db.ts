@@ -51,9 +51,19 @@ export async function get(_collection: collectionEnum, id: string) {
 }
 export async function getFilter(
     _collection: collectionEnum,
-    filter: object,
+    filter: Record<string, Record<string, any> | string>,
     project?: object,
 ) {
+    if ('_id' in filter) {
+        if (typeof filter['_id'] == 'string')
+            filter['_id'] = new ObjectId(filter['_id']);
+        else if ('$in' in filter._id) {
+            for (const index in filter._id.$in) {
+                filter._id.$in[index] = new ObjectId(filter._id.$in[index]);
+            }
+        }
+    }
+
     const collection = db.collection(_collection);
     if (project) return collection.find(filter).project(project);
     return collection.find(filter);
@@ -70,13 +80,15 @@ export async function existFilter(_collection: collectionEnum, filter: object) {
 
 export async function update(
     _collection: collectionEnum,
-    id: string,
+    id: string | ObjectId,
     data: object,
 ) {
-    const uuid = new ObjectId(id);
+    if (typeof id == 'string') {
+        id = new ObjectId(id);
+    }
     const collection = db.collection(_collection);
     if ('uuid' in data) delete data['uuid'];
-    collection.updateOne({ _id: uuid }, data);
+    collection.updateOne({ _id: id }, data);
 }
 export async function updateFilter(
     _collection: collectionEnum,
