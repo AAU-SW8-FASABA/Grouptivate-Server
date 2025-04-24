@@ -1,81 +1,102 @@
-import { parseInput, parseOutput } from "../../src/schemaParsers";
-import db, { insert, collectionEnum, update, existFilter, getFilter, remove, get } from "../../src/db";
-import type {Request, Response} from "express"
-import { GroupGoalCreateRequestSchema, GoalDeleteRequestSchema } from "../../Grouptivate-API/schemas/Goal";
-import { GroupCreateRequestSchema, GroupGetRequestSchema, GroupRemoveRequestSchema } from "../../Grouptivate-API/schemas/Group";
-import { InviteCreateRequestSchema, InviteGetRequestSchema, InviteRespondRequestSchema } from "../../Grouptivate-API/schemas/Invite";
-import {router as inviteRouter} from "./invite/inviteRoutes"
-import {router as goalRouter} from "./goal/goalRoutes"
-import express from "express"
+import { parseInput, parseOutput } from '../../src/schemaParsers';
+import db, {
+    insert,
+    collectionEnum,
+    update,
+    existFilter,
+    getFilter,
+    remove,
+    get,
+} from '../../src/db';
+import type { Request, Response } from 'express';
+import {
+    GroupGoalCreateRequestSchema,
+    GoalDeleteRequestSchema,
+} from '../../Grouptivate-API/schemas/Goal';
+import {
+    GroupCreateRequestSchema,
+    GroupGetRequestSchema,
+    GroupRemoveRequestSchema,
+} from '../../Grouptivate-API/schemas/Group';
+import {
+    InviteCreateRequestSchema,
+    InviteGetRequestSchema,
+    InviteRespondRequestSchema,
+} from '../../Grouptivate-API/schemas/Invite';
+import { router as inviteRouter } from './invite/inviteRoutes';
+import { router as goalRouter } from './goal/goalRoutes';
+import express from 'express';
 
 export const router = express.Router();
 
+router.use('/invite', inviteRouter);
+router.use('/goal', goalRouter);
 
-router.use("/invite", inviteRouter)
-router.use("/goal", goalRouter)
+router.post('/', async (req: Request, res: Response) => {
+    const parseRes = parseInput(GroupCreateRequestSchema, req, res);
+    if (parseRes.success) {
+        const mockObj = {
+            name: parseRes.name,
+            users: [parseRes.user],
+            interval: parseRes.interval,
+            streak: 0,
+        };
+        //Create group
+        const groupId = await insert(collectionEnum.Group, mockObj);
 
-router.post("/", async (req: Request, res: Response) => {
-    const parseRes = parseInput(GroupCreateRequestSchema, req, res)
-    if(parseRes.success){
-      const mockObj = {
-        name: parseRes.name,
-        users: [parseRes.user],
-        interval: parseRes.interval,
-        streak: 0
-      }
-      //Create group
-      const groupId = await insert(collectionEnum.Group, mockObj)
-    
-      //Add group to user table
-      if (groupId == null)
-        res.status(500).send("Failed to insert")
-      else{
-        update(collectionEnum.User, parseRes.uuid, {
-          $push: {groups: groupId}
-        })
-        parseOutput(GroupCreateRequestSchema, {uuid: groupId.toString()}, res)
-      }
+        //Add group to user table
+        if (groupId == null) res.status(500).send('Failed to insert');
+        else {
+            update(collectionEnum.User, parseRes.uuid, {
+                $push: { groups: groupId },
+            });
+            parseOutput(
+                GroupCreateRequestSchema,
+                { uuid: groupId.toString() },
+                res,
+            );
+        }
     }
-  });
-  
-//Get group info.
-router.get("/", async (req: Request, res: Response) => {
-  const parseRes = parseInput(GroupGetRequestSchema, req, res)
-  if(parseRes.success){
-    const data = await get(collectionEnum.Group, parseRes.uuid)
-    if (data == null){
-      res.status(404).send("group not found")
-      return
-    }
-    parseOutput(GroupGetRequestSchema, data, res)
-    // res.send(convertObj(data))
-  }
 });
 
-  
-  
+//Get group info.
+router.get('/', async (req: Request, res: Response) => {
+    const parseRes = parseInput(GroupGetRequestSchema, req, res);
+    if (parseRes.success) {
+        const data = await get(collectionEnum.Group, parseRes.uuid);
+        if (data == null) {
+            res.status(404).send('group not found');
+            return;
+        }
+        parseOutput(GroupGetRequestSchema, data, res);
+        // res.send(convertObj(data))
+    }
+});
+
 //group/remove ----------------------
 //Remove user from group.
-router.post("/remove", async (req: Request, res: Response) => {
-  const parseRes = parseInput(GroupRemoveRequestSchema, req, res)
-  if(parseRes.success){
-    const groupId = parseRes.group
-    const userId = parseRes.user
-    update(collectionEnum.Group, groupId, {
-      $pull: {users: userId} 
-    })
-    update(collectionEnum.User,  userId, {
-      $pull: {groups: groupId} 
-    })
-    parseOutput(GroupRemoveRequestSchema, {},res)
+router.post('/remove', async (req: Request, res: Response) => {
+    const parseRes = parseInput(GroupRemoveRequestSchema, req, res);
+    if (parseRes.success) {
+        const groupId = parseRes.group;
+        const userId = parseRes.user;
+        update(collectionEnum.Group, groupId, {
+            $pull: { users: userId },
+        });
+        update(collectionEnum.User, userId, {
+            $pull: { groups: groupId },
+        });
+        parseOutput(GroupRemoveRequestSchema, {}, res);
 
-    const emptyGroups = await getFilter(collectionEnum.Group, {users : {$size: 0}}, {_id: 1})
-    for(const group of await emptyGroups.toArray()){
-      remove(collectionEnum.Goal, {group: group._id.toString()})
-      remove(collectionEnum.Group, {_id: group._id.toString()})
-      console.log(group._id)
+        const emptyGroups = await getFilter(
+            collectionEnum.Group,
+            { users: { $size: 0 } },
+            { _id: 1 },
+        );
+        for (const group of await emptyGroups.toArray()) {
+            remove(collectionEnum.Goal, { group: group._id.toString() });
+            remove(collectionEnum.Group, { _id: group._id.toString() });
+            console.log(group._id);
+        }
     }
-  }
 });
-  
-  

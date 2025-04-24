@@ -1,54 +1,72 @@
-import { parseInput, parseOutput } from "../../../src/schemaParsers";
-import db, { insert, collectionEnum, update, existFilter, getFilter, remove, get } from "../../../src/db";
-import type {Request, Response} from "express"
-import { GroupGoalCreateRequestSchema, GoalDeleteRequestSchema } from "../../../Grouptivate-API/schemas/Goal";
-import express from "express"
+import { parseInput, parseOutput } from '../../../src/schemaParsers';
+import db, {
+    insert,
+    collectionEnum,
+    update,
+    existFilter,
+    getFilter,
+    remove,
+    get,
+} from '../../../src/db';
+import type { Request, Response } from 'express';
+import {
+    GroupGoalCreateRequestSchema,
+    GoalDeleteRequestSchema,
+} from '../../../Grouptivate-API/schemas/Goal';
+import express from 'express';
 
 export const router = express.Router();
 
 //Group/goal ------------------------
 //Create goal.
-router.post("/", async (req: Request, res: Response) => {
-const parseRes = parseInput(GroupGoalCreateRequestSchema, req, res)
-if(parseRes.success){
-    const group = {
-    title: parseRes.title,
-    activity: parseRes.activity,
-    metric: parseRes.metric,
-    target: parseRes.target,
-    group: parseRes.group,
-    progress: []
+router.post('/', async (req: Request, res: Response) => {
+    const parseRes = parseInput(GroupGoalCreateRequestSchema, req, res);
+    if (parseRes.success) {
+        const group = {
+            title: parseRes.title,
+            activity: parseRes.activity,
+            metric: parseRes.metric,
+            target: parseRes.target,
+            group: parseRes.group,
+            progress: [],
+        };
+        if (
+            await existFilter(collectionEnum.Group, {
+                _id: parseRes.group,
+                users: parseRes.user,
+            })
+        ) {
+            const response = {
+                uuid: (await insert(collectionEnum.Goal, group)).toString(),
+            };
+            parseOutput(GroupGoalCreateRequestSchema, response, res);
+        } else {
+            res.status(401).send('Not a member of group');
+        }
     }
-    if(await existFilter(collectionEnum.Group, {_id: parseRes.group, users: parseRes.user})){
-    const response = {
-        uuid: (await insert(collectionEnum.Goal, group)).toString()
-    }
-    parseOutput(GroupGoalCreateRequestSchema, response, res)
-    }
-    else{
-    res.status(401).send("Not a member of group")
-    }
-    
-}
-
 });
 
 //Delete goal.
-router.delete("/", async (req: Request, res: Response) => {
-const parseRes = parseInput(GoalDeleteRequestSchema, req, res)
-if(parseRes.success){
-    console.log(parseRes)
-    const userId = parseRes.user
-    const goalId = parseRes.uuid
+router.delete('/', async (req: Request, res: Response) => {
+    const parseRes = parseInput(GoalDeleteRequestSchema, req, res);
+    if (parseRes.success) {
+        console.log(parseRes);
+        const userId = parseRes.user;
+        const goalId = parseRes.uuid;
 
-    //Check if user should be able to delete goalId
-    const groupObjArray = await (await getFilter(collectionEnum.Group, {users: userId}, {_id: 1})).toArray()
-    const groupIdArray = []
-    for(const object of groupObjArray){
-    groupIdArray.push(object._id.toString())
+        //Check if user should be able to delete goalId
+        const groupObjArray = await (
+            await getFilter(collectionEnum.Group, { users: userId }, { _id: 1 })
+        ).toArray();
+        const groupIdArray = [];
+        for (const object of groupObjArray) {
+            groupIdArray.push(object._id.toString());
+        }
+        remove(collectionEnum.Goal, {
+            group: { $in: groupIdArray },
+            _id: goalId,
+        });
+
+        parseOutput(GoalDeleteRequestSchema, {}, res);
     }
-    remove(collectionEnum.Goal, {group: {$in: groupIdArray}, _id: goalId})
-
-    parseOutput(GoalDeleteRequestSchema, {}, res)
-}
 });
