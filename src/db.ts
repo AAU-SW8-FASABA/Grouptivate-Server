@@ -112,11 +112,16 @@ export async function insert(_collection: collectionEnum, data: object) {
     return result.insertedId;
 }
 
-export async function remove(_collection: collectionEnum, filter: object) {
+export async function remove(_collection: collectionEnum, filter: Record<string, Record<string, any> | string>,) {
     //TODO: check om fejler?
-
-    if ('_id' in filter && typeof filter['_id'] == 'string') {
-        filter['_id'] = new ObjectId(filter['_id']);
+    if ('_id' in filter) {
+        if (typeof filter['_id'] == 'string')
+            filter['_id'] = new ObjectId(filter['_id']);
+        else if ('$in' in filter._id) {
+            for (const index in filter._id.$in) {
+                filter._id.$in[index] = new ObjectId(filter._id.$in[index]);
+            }
+        }
     }
     const collection = db.collection(_collection);
     collection.deleteMany(filter);
