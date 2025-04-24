@@ -96,7 +96,6 @@ router.post('/remove', async (req: Request, res: Response) => {
         for (const group of await emptyGroups.toArray()) {
             remove(collectionEnum.Goal, { group: group._id.toString() });
             remove(collectionEnum.Group, { _id: group._id.toString() });
-            console.log(group._id);
         }
     }
 });

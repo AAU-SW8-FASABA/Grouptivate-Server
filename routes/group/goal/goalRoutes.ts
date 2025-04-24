@@ -6,7 +6,6 @@ import {
     existFilter,
     getFilter,
     remove,
-    get,
 } from '../../../src/db';
 import type { Request, Response } from 'express';
 import {
@@ -14,11 +13,8 @@ import {
     GoalDeleteRequestSchema,
     IndividualGoalCreateRequestSchema,
     GoalPatchRequestSchema,
-    GroupGoalSchema,
 } from '../../../Grouptivate-API/schemas/Goal';
 import express from 'express';
-import { safeParse } from 'valibot';
-import { GroupSchema } from '../../../Grouptivate-API/schemas/Group';
 
 export const router = express.Router();
 
@@ -55,7 +51,6 @@ router.post('/', async (req: Request, res: Response) => {
 router.delete('/', async (req: Request, res: Response) => {
     const parseRes = parseInput(GoalDeleteRequestSchema, req, res);
     if (parseRes.success) {
-        console.log(parseRes);
         const userId = parseRes.user;
         const goalId = parseRes.uuid;
 

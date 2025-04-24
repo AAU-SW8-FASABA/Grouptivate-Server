@@ -83,9 +83,6 @@ router.post('/respond', async (req: Request, res: Response) => {
             update(collectionEnum.User, userId, {
                 $push: { groups: groupData['group'] },
             });
-            console.log(
-                'added group:' + groupData['group'] + '. To user:' + userId,
-            );
         }
         await remove(collectionEnum.Invite, { _id: inviteId });
         parseOutput(InviteRespondRequestSchema, {}, res);

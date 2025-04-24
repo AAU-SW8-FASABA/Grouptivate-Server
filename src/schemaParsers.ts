@@ -1,5 +1,5 @@
 import type { WithId } from 'mongodb';
-import { object, safeParse } from 'valibot';
+import { safeParse } from 'valibot';
 import type {
     RequestSchema,
     SearchParametersSchema,
@@ -27,8 +27,6 @@ export function parseInput(
     if (Object.keys(inputSchema.searchParams).length > 0) {
         const paramSchema = inputSchema.searchParams;
         for (const [key, value] of Object.entries(paramSchema)) {
-            // console.log("Param:")
-            // console.log({[key] :req.query[key]})
             const parse = safeParse(value, req.query[key]);
             parseRes.push(parse.success);
             if (!parse.success) {
