@@ -7,7 +7,7 @@ import {safeParse, parse, uuid, object}  from "valibot"
 import {GroupCreateRequestSchema, GroupGetRequestSchema, GroupRemoveRequestSchema, GroupSchema, type Group} from "./Grouptivate-API/schemas/Group"
 import  {UserSchema, UserGetRequestSchema, UserCreateRequestSchema} from "./Grouptivate-API/schemas/User"
 import { InviteCreateRequestSchema, InviteGetRequestSchema, InviteRespondRequestSchema, InviteSchema, type Invite } from "./Grouptivate-API/schemas/Invite";
-import { GoalSchema, GroupGoalSchema, IndividualGoalSchema, type Goal, type GroupGoal, type IndividualGoal } from "./Grouptivate-API/schemas/Goal";
+import { GoalDeleteRequestSchema, GoalSchema, GroupGoalCreateRequestSchema, GroupGoalSchema, IndividualGoalSchema, type Goal, type GroupGoal, type IndividualGoal } from "./Grouptivate-API/schemas/Goal";
 import { NameSchema } from "./Grouptivate-API/schemas/Name";
 import { UuidSchema, type Uuid } from "./Grouptivate-API/schemas/Uuid";
 import { Interval } from "./Grouptivate-API/schemas/Interval";
@@ -51,6 +51,16 @@ async function getFilter(_collection: collectionEnum, filter: object, project?: 
 }
 
 async function existFilter(_collection: collectionEnum, filter: object) {
+  if('_id' in filter){
+    const idResult = safeParse(UuidSchema, filter["_id"])
+    if(idResult.success){
+      
+      filter['_id'] =  new ObjectId(idResult.output)
+    }
+    else{
+      return
+    }
+  }
   const collection = db.collection(_collection);
 
   return collection.countDocuments(filter)
@@ -428,32 +438,47 @@ app.post("/group/remove", async (req: Request, res: Response) => {
 //Group/goal ------------------------
 //Create goal.
 app.post("/group/goal", async (req: Request, res: Response) => {
-  const indiGoalIdResult = safeParse(IndividualGoalSchema, req.body)
-  const groupGoalIdResult = safeParse(GroupGoalSchema, req.body) 
-  if(indiGoalIdResult.success){
-    const goal = indiGoalIdResult.output
-    const result = await insert(collectionEnum.Goal,goal)
-    res.send(result)
-  } else if(groupGoalIdResult.success){
-    const goal = groupGoalIdResult.output
-    const result = await insert(collectionEnum.Goal,goal)
-    res.send(result)
-  } 
-  else{
-    res.status(400).send("Failed to parse input")
+  const parseRes = parseInput(GroupGoalCreateRequestSchema, req, res)
+  if(parseRes.success){
+    const group = {
+      title: parseRes.title,
+      activity: parseRes.activity,
+      metric: parseRes.metric,
+      target: parseRes.target,
+      group: parseRes.group,
+      progress: []
+    }
+    if(await existFilter(collectionEnum.Group, {_id: parseRes.group, users: parseRes.user})){
+      const response = {
+        uuid: (await insert(collectionEnum.Goal, group)).toString()
+      }
+      parseOutput(GroupGoalCreateRequestSchema, response, res)
+    }
+    else{
+      res.status(401).send("Not a member of group")
+    }
+    
   }
+
 });
 
 //Delete goal.
 app.delete("/group/goal", async (req: Request, res: Response) => {
-  const goalIdResult = safeParse(UuidSchema,req.body.uuid)
-  if(goalIdResult.success){
-    const goalId = goalIdResult.output
-    const result = await remove(collectionEnum.Goal, {_id: goalId})
-    res.send(result)
-  }
-  else{
-    res.status(400).send("Failed to parse input")
+  const parseRes = parseInput(GoalDeleteRequestSchema, req, res)
+  if(parseRes.success){
+    console.log(parseRes)
+    const userId = parseRes.user
+    const goalId = parseRes.uuid
+
+    //Check if user should be able to delete goalId
+    const groupObjArray = await (await getFilter(collectionEnum.Group, {users: userId}, {_id: 1})).toArray()
+    const groupIdArray = []
+    for(const object of groupObjArray){
+      groupIdArray.push(object._id.toString())
+    }
+    remove(collectionEnum.Goal, {group: {$in: groupIdArray}, _id: goalId})
+
+    parseOutput(GoalDeleteRequestSchema, {}, res)
   }
 });
 
