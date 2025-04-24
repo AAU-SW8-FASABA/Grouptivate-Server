@@ -123,6 +123,7 @@ export async function remove(_collection: collectionEnum, filter: Record<string,
             }
         }
     }
+    console.log(filter)
     const collection = db.collection(_collection);
     collection.deleteMany(filter);
 }
