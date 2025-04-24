@@ -1,8 +1,8 @@
 import { safeParse } from "valibot";
-import { UserCreateRequestSchema, UserGetRequestSchema } from "../Grouptivate-API/schemas/User";
-import { UuidSchema } from "../Grouptivate-API/schemas/Uuid";
-import { parseInput, parseOutput } from "../src/schemaParsers";
-import db, { insert, collectionEnum, update, get } from "../src/db";
+import { UserCreateRequestSchema, UserGetRequestSchema } from "../../Grouptivate-API/schemas/User";
+import { UuidSchema } from "../../Grouptivate-API/schemas/Uuid";
+import { parseInput, parseOutput } from "../../src/schemaParsers";
+import db, { insert, collectionEnum, update, get } from "../../src/db";
 import type {Request, Response} from "express"
 import express from "express"
 
