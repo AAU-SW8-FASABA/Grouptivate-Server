@@ -28,8 +28,8 @@ export const router = express.Router();
 
 //Group/goal ------------------------
 //Create goal.
-//TODO: User creating the goal should be put in progress. 
-//TODO: Every user of the group should be put in the progress. 
+//TODO: User creating the goal should be put in progress.
+//TODO: Every user of the group should be put in the progress.
 //TODO: When group is deleted, delete all goals they points at.
 router.post('/', async (req: Request, res: Response) => {
     const parseRes = parseInput(GroupGoalCreateRequestSchema, req, res);
@@ -45,7 +45,7 @@ router.post('/', async (req: Request, res: Response) => {
                 activity: parseRes.activity,
                 metric: parseRes.metric,
                 target: parseRes.target,
-                progress: { [parseRes.User] : 0 },
+                progress: { [parseRes.User]: 0 },
             };
             const goalId = (
                 await insert(collectionEnum.Goal, groupGoal)
