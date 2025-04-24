@@ -121,7 +121,7 @@ router.patch('/', async (req: Request, res: Response) => {
             return obj;
         }, {});
 
-        //This will drop any goals that the user should not have acces to, but will do so silently
+        //This will drop any goals that the user should not have access to, but will do so silently
         const idObjArray = await (
             await getFilter(
                 collectionEnum.Group,
