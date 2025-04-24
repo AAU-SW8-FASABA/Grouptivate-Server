@@ -112,7 +112,10 @@ export async function insert(_collection: collectionEnum, data: object) {
     return result.insertedId;
 }
 
-export async function remove(_collection: collectionEnum, filter: Record<string, Record<string, any> | string>,) {
+export async function remove(
+    _collection: collectionEnum,
+    filter: Record<string, Record<string, any> | string>,
+) {
     //TODO: check om fejler?
     if ('_id' in filter) {
         if (typeof filter['_id'] == 'string')
@@ -123,7 +126,6 @@ export async function remove(_collection: collectionEnum, filter: Record<string,
             }
         }
     }
-    console.log(filter)
     const collection = db.collection(_collection);
     collection.deleteMany(filter);
 }

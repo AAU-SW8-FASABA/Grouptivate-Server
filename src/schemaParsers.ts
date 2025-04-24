@@ -47,7 +47,6 @@ export function parseInput(
         Object.keys(inputSchema?.requestBody).length > 0
     ) {
         const parseBody = safeParse(inputSchema.requestBody, req.body);
-        console.log(parseBody.output);
         result.success = parseBody.success && (result?.success ?? true);
         if (!result.success) console.log(parseBody.issues);
         result.issues.concat(parseBody.issues);
@@ -76,7 +75,6 @@ export function parseOutput(
             // console.log(parseRes.output)
             return res.send(parseRes.output);
         } else {
-            console.log(data);
             return res.status(401).send(parseRes.issues);
         }
     }

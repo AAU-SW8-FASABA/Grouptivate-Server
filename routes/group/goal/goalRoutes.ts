@@ -127,7 +127,6 @@ router.patch('/', async (req: Request, res: Response) => {
     const parseRes = parseInput(GoalPatchRequestSchema, req, res);
     if (parseRes.success) {
         //check if group or individual
-        console.log(parseRes);
         if (safeParse(GroupGoalSchema, parseRes).success) {
             console.log('Group!');
         } else if (safeParse(GroupSchema, parseRes).success) {
