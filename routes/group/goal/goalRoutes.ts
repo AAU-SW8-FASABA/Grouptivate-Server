@@ -15,14 +15,8 @@ import {
     GoalDeleteRequestSchema,
     IndividualGoalCreateRequestSchema,
     GoalPatchRequestSchema,
-    GroupGoalSchema,
 } from '../../../Grouptivate-API/schemas/Goal';
 import express from 'express';
-import { record, safeParse } from 'valibot';
-import { GroupSchema } from '../../../Grouptivate-API/schemas/Group';
-import { ObjectId } from 'mongodb';
-import { Uuid } from '../../../Grouptivate-API/schemas/Uuid';
-import { PositiveNumber } from '../../../Grouptivate-API/schemas/PositiveNumber';
 
 export const router = express.Router();
 
