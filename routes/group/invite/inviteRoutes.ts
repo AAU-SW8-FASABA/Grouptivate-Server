@@ -78,21 +78,28 @@ router.post('/respond', async (req: Request, res: Response) => {
                 res.status(404).send('Invite not found');
                 return;
             }
-            const groupData = await get(collectionEnum.Group, inviteData['group'])
-            if (groupData == null){
+            const groupData = await get(
+                collectionEnum.Group,
+                inviteData['group'],
+            );
+            if (groupData == null) {
                 res.status(404).send('Group not found');
                 return;
             }
-            const field = "progress." + userId
+            const field = 'progress.' + userId;
             update(collectionEnum.Group, inviteData['group'], {
                 $push: { users: userId },
             });
-            updateFilter(collectionEnum.Goal, {
-                _id: {$in: groupData['goals']},
-                user: {$exists : false},
-            },{
-                $set: {[field]: 0}
-            })
+            updateFilter(
+                collectionEnum.Goal,
+                {
+                    _id: { $in: groupData['goals'] },
+                    user: { $exists: false },
+                },
+                {
+                    $set: { [field]: 0 },
+                },
+            );
             update(collectionEnum.User, userId, {
                 $push: { groups: inviteData['group'] },
             });

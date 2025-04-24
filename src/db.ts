@@ -88,9 +88,18 @@ export async function update(
 }
 export async function updateFilter(
     _collection: collectionEnum,
-    filter: object,
+    filter: Record<string, Record<string, any> | string>,
     data: object,
 ) {
+    if ('_id' in filter) {
+        if (typeof filter['_id'] == 'string')
+            filter['_id'] = new ObjectId(filter['_id']);
+        else if ('$in' in filter._id) {
+            for (const index in filter._id.$in) {
+                filter._id.$in[index] = new ObjectId(filter._id.$in[index]);
+            }
+        }
+    }
     const collection = db.collection(_collection);
     if ('uuid' in data) delete data['uuid'];
     collection.updateOne(filter, data);
