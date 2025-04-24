@@ -28,7 +28,6 @@ export const router = express.Router();
 
 //Group/goal ------------------------
 //Create goal.
-//TODO: When user is added to group they should be put in the group goals progress.
 router.post('/', async (req: Request, res: Response) => {
     const parseRes = parseInput(GroupGoalCreateRequestSchema, req, res);
     if (parseRes.success) {
