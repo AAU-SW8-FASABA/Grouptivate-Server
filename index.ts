@@ -1,6 +1,6 @@
 import express, { response } from "express";
 import type { Request, Response } from "express";
-import { parseInput, parseOutput } from "./schemaParsers";
+import { parseInput, parseOutput } from "./src/schemaParsers";
 import {router as userRoutes} from "./routes/userRoutes"
 import {router as groupRoutes} from "./routes/groupRoutes"
 

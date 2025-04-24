@@ -1,6 +1,6 @@
 import type { WithId } from "mongodb";
 import { safeParse } from "valibot";
-import type { RequestSchema, SearchParametersSchema } from "./Grouptivate-API/containers/Request";
+import type { RequestSchema, SearchParametersSchema } from "../Grouptivate-API/containers/Request";
 import type {Request, Response} from "express"
 
 function convertObj(inputobj: WithId<Document>){
