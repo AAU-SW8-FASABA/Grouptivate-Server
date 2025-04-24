@@ -56,9 +56,7 @@ router.post("/", async (req: Request, res: Response) => {
         invited: result.invited,
         inviter: result.user
       })
-      const response = {
-      }
-      parseOutput(InviteCreateRequestSchema, response, res)
+      parseOutput(InviteCreateRequestSchema, {}, res)
     }
   });
   
