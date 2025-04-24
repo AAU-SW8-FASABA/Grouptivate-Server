@@ -14,14 +14,13 @@ export const router = express.Router();
 router.post("/", async (req: Request, res: Response) => {
     const result = parseInput(InviteCreateRequestSchema,req, res)
     if(result.success){
-        const id = await insert(collectionEnum.Invite, {
+        await insert(collectionEnum.Invite, {
         group: result.group,
         invited: result.invited,
         inviter: result.user
         })
-        const response = {
-        }
-        parseOutput(InviteCreateRequestSchema, response, res)
+
+        parseOutput(InviteCreateRequestSchema, {}, res)
     }
 });
   
