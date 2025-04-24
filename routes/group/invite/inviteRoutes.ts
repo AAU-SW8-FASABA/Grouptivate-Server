@@ -78,8 +78,10 @@ router.post('/respond', async (req: Request, res: Response) => {
                 res.status(404).send('Invite not found');
                 return;
             }
+            const field = "progress." + userId
             update(collectionEnum.Group, groupData['group'], {
                 $push: { users: userId },
+                $set: {[field]: 0}
             });
             update(collectionEnum.User, userId, {
                 $push: { groups: groupData['group'] },
