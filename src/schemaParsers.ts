@@ -78,7 +78,6 @@ export function parseOutput(
             // console.log(parseRes.output)
             return res.send(parseRes.output);
         } else {
-            console.log(data);
             return res.status(401).send(parseRes.issues);
         }
     }

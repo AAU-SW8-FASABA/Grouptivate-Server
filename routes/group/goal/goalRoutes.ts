@@ -5,7 +5,9 @@ import {
     update,
     existFilter,
     getFilter,
+    findOneFilter,
     remove,
+    get,
 } from '../../../src/db';
 import type { Request, Response } from 'express';
 import {
@@ -23,23 +25,33 @@ export const router = express.Router();
 router.post('/', async (req: Request, res: Response) => {
     const parseRes = parseInput(GroupGoalCreateRequestSchema, req, res);
     if (parseRes.success) {
-        const group = {
-            title: parseRes.title,
-            activity: parseRes.activity,
-            metric: parseRes.metric,
-            target: parseRes.target,
-            group: parseRes.group,
-            progress: [],
-        };
         if (
             await existFilter(collectionEnum.Group, {
                 _id: parseRes.group,
                 users: parseRes.user,
             })
         ) {
-            const response = {
-                uuid: (await insert(collectionEnum.Goal, group)).toString(),
+            const groupData =
+                (await get(collectionEnum.Group, parseRes.group)) ?? [];
+            const goalProgress = {};
+            for (let user of groupData['users'])
+                goalProgress[user.toString()] = 0;
+            const groupGoal = {
+                title: parseRes.title,
+                activity: parseRes.activity,
+                metric: parseRes.metric,
+                target: parseRes.target,
+                progress: goalProgress,
             };
+            const goalId = (
+                await insert(collectionEnum.Goal, groupGoal)
+            ).toString();
+            const response = {
+                uuid: goalId,
+            };
+            update(collectionEnum.Group, parseRes.group, {
+                $push: { goals: goalId },
+            });
             parseOutput(GroupGoalCreateRequestSchema, response, res);
         } else {
             res.status(401).send('Not a member of group');
@@ -54,19 +66,18 @@ router.delete('/', async (req: Request, res: Response) => {
         const userId = parseRes.user;
         const goalId = parseRes.uuid;
 
-        //Check if user should be able to delete goalId
-        const groupObjArray = await (
-            await getFilter(collectionEnum.Group, { users: userId }, { _id: 1 })
-        ).toArray();
-        const groupIdArray: Array<string> = [];
-        for (const object of groupObjArray) {
-            groupIdArray.push(object._id.toString());
-        }
-        remove(collectionEnum.Goal, {
-            group: { $in: groupIdArray },
-            _id: goalId,
+        const groupData = await findOneFilter(collectionEnum.Group, {
+            users: userId,
+            goals: goalId,
         });
-
+        if (groupData == null) {
+            res.status(404).send('group not found, or no access to group');
+            return;
+        }
+        await update(collectionEnum.Group, groupData['_id'].toString(), {
+            $pull: { goals: goalId },
+        });
+        await remove(collectionEnum.Goal, { _id: goalId });
         parseOutput(GoalDeleteRequestSchema, {}, res);
     }
 });
@@ -89,21 +100,19 @@ router.post('/individual', async (req: Request, res: Response) => {
                 users: parseRes.createruuid,
             })
         ) {
+            const goalId = (
+                await insert(collectionEnum.Goal, individualGoal)
+            ).toString();
             const response = {
-                uuid: (
-                    await insert(collectionEnum.Goal, individualGoal)
-                ).toString(),
+                uuid: goalId,
             };
+            update(collectionEnum.Group, parseRes.group, {
+                $push: { goals: goalId },
+            });
             parseOutput(IndividualGoalCreateRequestSchema, response, res);
         } else {
             res.status(401).send('Not a member of group');
         }
-    }
-});
-
-router.delete('/individual', async (req: Request, res: Response) => {
-    const parseRes = parseInput(GoalDeleteRequestSchema, req, res);
-    if (parseRes.success) {
     }
 });
 
@@ -116,7 +125,7 @@ router.patch('/', async (req: Request, res: Response) => {
             return obj;
         }, {});
 
-        //This will drop any goals that the user should not have acces to, but will do so silently
+        //This will drop any goals that the user should not have access to, but will do so silently
         const idObjArray = await (
             await getFilter(
                 collectionEnum.Group,

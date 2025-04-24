@@ -69,6 +69,14 @@ export async function getFilter(
     return collection.find(filter);
 }
 
+export async function findOneFilter(
+    _collection: collectionEnum,
+    filter: object,
+) {
+    const collection = db.collection(_collection);
+    return collection.findOne(filter);
+}
+
 export async function existFilter(_collection: collectionEnum, filter: object) {
     if ('_id' in filter && typeof filter['_id'] == 'string') {
         filter['_id'] = new ObjectId(filter['_id']);
@@ -92,9 +100,18 @@ export async function update(
 }
 export async function updateFilter(
     _collection: collectionEnum,
-    filter: object,
+    filter: Record<string, Record<string, any> | string>,
     data: object,
 ) {
+    if ('_id' in filter) {
+        if (typeof filter['_id'] == 'string')
+            filter['_id'] = new ObjectId(filter['_id']);
+        else if ('$in' in filter._id) {
+            for (const index in filter._id.$in) {
+                filter._id.$in[index] = new ObjectId(filter._id.$in[index]);
+            }
+        }
+    }
     const collection = db.collection(_collection);
     if ('uuid' in data) delete data['uuid'];
     collection.updateOne(filter, data);
@@ -107,9 +124,18 @@ export async function insert(_collection: collectionEnum, data: object) {
     return result.insertedId;
 }
 
-export async function remove(_collection: collectionEnum, filter: object) {
-    if ('_id' in filter && typeof filter['_id'] == 'string') {
-        filter['_id'] = new ObjectId(filter['_id']);
+export async function remove(
+    _collection: collectionEnum,
+    filter: Record<string, Record<string, any> | string>,
+) {
+    if ('_id' in filter) {
+        if (typeof filter['_id'] == 'string')
+            filter['_id'] = new ObjectId(filter['_id']);
+        else if ('$in' in filter._id) {
+            for (const index in filter._id.$in) {
+                filter._id.$in[index] = new ObjectId(filter._id.$in[index]);
+            }
+        }
     }
     const collection = db.collection(_collection);
     collection.deleteMany(filter);
