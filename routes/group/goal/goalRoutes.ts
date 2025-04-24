@@ -37,10 +37,10 @@ router.post('/', async (req: Request, res: Response) => {
                 users: parseRes.user,
             })
         ) {
-            const groupData = get(collectionEnum.Group, parseRes.group)
+            const groupData = (await get(collectionEnum.Group, parseRes.group)) ?? []
             const goalProgress = {}
-            for(let user in groupData['users'])
-                goalProgress[user] = 0
+            for(let user of groupData['users'])
+                goalProgress[user.toString()] = 0
             const groupGoal = {
                 title: parseRes.title,
                 activity: parseRes.activity,
