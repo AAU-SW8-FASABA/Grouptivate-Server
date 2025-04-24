@@ -32,9 +32,8 @@ async function get(_collection: collectionEnum, id: string) {
         const res = await collection.findOne(query)
         return res;
       case collectionEnum.Invite:
-        //const querya = "user: uuid};
-        const invites = await collection.findOne({_id: uuid})        
-        return invites;
+        const invite = await collection.findOne({_id: uuid})   
+        return invite;
       default:
         throw error("OutOfBounds");
     }
@@ -166,7 +165,6 @@ function parseInput(inputSchema: RequestSchema<SearchParametersSchema, any, any>
   }
   if(inputSchema?.requestBody && Object.keys(inputSchema?.requestBody).length > 0){
     const parseBody = safeParse(inputSchema.requestBody, req.body)
-    console.log(parseBody.output)
     result.success = parseBody.success && (result?.success ?? true)
     if(!result.success)
       console.log(parseBody.issues)
@@ -394,20 +392,24 @@ app.delete("/group/invite", async (req: Request, res: Response) => {
 app.post("/group/invite/respond", async (req: Request, res: Response) => {
   const inviteResponse = parseInput(InviteRespondRequestSchema, req, res)
   if(inviteResponse.success){
-    if(inviteResponse.requestBody == true){
+    const inviteId = inviteResponse.invite
+    if(inviteResponse.accepted == true){
       const userId = inviteResponse.user
-      const inviteId = inviteResponse.invite
-
-      const groupId = await getFilter(collectionEnum.Invite, {_id: inviteId, invited: userId}, {group: 1})
-      //update(collectionEnum.Group, groupIdResult.output, {
-      //  $push: {users: new ObjectId(userId)}
-      //})
-      //update(collectionEnum.User, userId, {
-      //  $push: {groups: new ObjectId(userId)}
-      //})
+      const groupData = await get(collectionEnum.Invite, inviteId)
+      if (groupData == null){
+        res.status(404).send("Invite not found")
+        return
+      }
+      update(collectionEnum.Group, groupData['group'], {
+        $push: {users: userId}
+      })
+      update(collectionEnum.User, userId, {
+        $push: {groups: groupData['group']}
+      })
+      console.log("added group:" + groupData['group'] + ". To user:" + userId)
     }
-    //const result = await remove(collectionEnum.Invite, {_id: inviteIdResult.output})
-    res.send("result")
+    await remove(collectionEnum.Invite, {_id: inviteId})
+    parseOutput(InviteRespondRequestSchema, {}, res)
   }
 });
 
