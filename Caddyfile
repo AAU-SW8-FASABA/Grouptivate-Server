@@ -1,0 +1,7 @@
+{
+	admin 0.0.0.0:2020
+}
+
+grouptivate.atjn.dk {
+	reverse_proxy :3000
+}
