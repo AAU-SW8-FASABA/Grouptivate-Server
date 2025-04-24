@@ -1,12 +1,12 @@
 import type { WithId } from 'mongodb';
-import { safeParse } from 'valibot';
+import { object, safeParse } from 'valibot';
 import type {
     RequestSchema,
     SearchParametersSchema,
 } from '../Grouptivate-API/containers/Request';
 import type { Request, Response } from 'express';
 
-function convertObj(inputobj: WithId<Document>) {
+export function convertObj(inputobj: WithId<Document>) {
     let obj: Record<any, any> = inputobj;
     obj.uuid = inputobj['_id'].toString();
 
@@ -68,8 +68,9 @@ export function parseOutput(
     res: Response,
 ) {
     if (schema.responseBody) {
-        if ('_id' in data) data = convertObj(data);
-        if (Array.isArray(data)) {
+        if ('_id' in data) {
+            data = convertObj(data);
+        } else if (Array.isArray(data)) {
             for (const index in data) {
                 data[index] = convertObj(data[index]);
             }
