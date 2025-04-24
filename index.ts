@@ -6,7 +6,7 @@ import { error, group, timeStamp } from "node:console";
 import {safeParse, parse, uuid, object}  from "valibot"
 import {GroupCreateRequestSchema, GroupGetRequestSchema, GroupRemoveRequestSchema, GroupSchema, type Group} from "./Grouptivate-API/schemas/Group"
 import  {UserSchema, UserGetRequestSchema, UserCreateRequestSchema} from "./Grouptivate-API/schemas/User"
-import { InviteCreateRequestSchema, InviteGetRequestSchema, InviteSchema, type Invite } from "./Grouptivate-API/schemas/Invite";
+import { InviteCreateRequestSchema, InviteGetRequestSchema, InviteRespondRequestSchema, InviteSchema, type Invite } from "./Grouptivate-API/schemas/Invite";
 import { GoalSchema, GroupGoalSchema, IndividualGoalSchema, type Goal, type GroupGoal, type IndividualGoal } from "./Grouptivate-API/schemas/Goal";
 import { NameSchema } from "./Grouptivate-API/schemas/Name";
 import { UuidSchema, type Uuid } from "./Grouptivate-API/schemas/Uuid";
@@ -156,8 +156,10 @@ function parseInput(inputSchema: RequestSchema<SearchParametersSchema, any, any>
   }
   if(inputSchema?.requestBody && Object.keys(inputSchema?.requestBody).length > 0){
     const parseBody = safeParse(inputSchema.requestBody, req.body)
+    console.log(parseBody.output)
     result.success = parseBody.success && (result?.success ?? true)
     if(!result.success)
+      console.log(parseBody.issues)
       result.issues.concat(parseBody.issues)
     Object.assign(result, parseBody.output)
   }
@@ -343,7 +345,7 @@ app.post("/group/invite", async (req: Request, res: Response) => {
     const id = await insert(collectionEnum.Invite, {
       group: result.group,
       invited: result.invited,
-      invitee: result.user
+      inviter: result.user
     })
     const response = {
     }
@@ -379,28 +381,25 @@ app.delete("/group/invite", async (req: Request, res: Response) => {
 
 //group/invite/respond ---------------
 //Respond to invite. 
-//app.post("/group/invite/respond", async (req: Request, res: Response) => {
-//  const inviteResponse = parseInput(InviteRespondRequestSchema, req, res)
-//  if(inviteResponse.success){
-//    if(inviteResponse.responseBool == true){
-//      const userId = inviteResponse.user
-//      const inviteId = inviteResponse.invite
-//
-//      const groupId = 
-//      update(collectionEnum.Group, groupIdResult.output, {
-//        $push: {users: new ObjectId(userId)}
-//      })
-//      update(collectionEnum.User, userId, {
-//        $push: {groups: new ObjectId(userId)}
-//      })
-//    }
-//    const result = await remove(collectionEnum.Invite, {_id: inviteIdResult.output})
-//    res.send(result)
-//  }
-//  else{
-//    res.status(400).send("Failed to parse input")
-//  }
-//});
+app.post("/group/invite/respond", async (req: Request, res: Response) => {
+  const inviteResponse = parseInput(InviteRespondRequestSchema, req, res)
+  if(inviteResponse.success){
+    if(inviteResponse.InviteRespondRequestBodySchema == true){
+      const userId = inviteResponse.user
+      const inviteId = inviteResponse.invite
+
+      const groupId = await getFilter(collectionEnum.Invite, {_id: inviteId, invited: userId}, {group: 1})
+      //update(collectionEnum.Group, groupIdResult.output, {
+      //  $push: {users: new ObjectId(userId)}
+      //})
+      //update(collectionEnum.User, userId, {
+      //  $push: {groups: new ObjectId(userId)}
+      //})
+    }
+    //const result = await remove(collectionEnum.Invite, {_id: inviteIdResult.output})
+    res.send("result")
+  }
+});
 
 //group/remove ----------------------
 //Remove user from group.
