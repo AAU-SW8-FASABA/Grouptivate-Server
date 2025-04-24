@@ -16,13 +16,7 @@ app.get("/", async (req: Request, res: Response) => {
 });
 app.use("/user", userRoutes)
 app.use("/group", groupRoutes)
-//Group ------------------
-  // uuid: UuidSchema,
-  // name: NameSchema,
-  // users: v.pipe(v.array(UuidSchema), v.minLength(1)),
-  // interval: IntervalSchema,
-  // streak: PositiveNumberSchema,
-//Create group.
+
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
