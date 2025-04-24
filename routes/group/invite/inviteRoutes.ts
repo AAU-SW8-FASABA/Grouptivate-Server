@@ -6,6 +6,7 @@ import {
     getFilter,
     remove,
     get,
+    updateFilter,
 } from '../../../src/db';
 import type { Request, Response } from 'express';
 import {
@@ -72,20 +73,36 @@ router.post('/respond', async (req: Request, res: Response) => {
         const inviteId = inviteResponse.invite;
         if (inviteResponse.accepted == true) {
             const userId = inviteResponse.user;
-            const groupData = await get(collectionEnum.Invite, inviteId);
-            if (groupData == null) {
+            const inviteData = await get(collectionEnum.Invite, inviteId);
+            if (inviteData == null) {
                 res.status(404).send('Invite not found');
                 return;
             }
-            update(collectionEnum.Group, groupData['group'], {
+            const groupData = await get(
+                collectionEnum.Group,
+                inviteData['group'],
+            );
+            if (groupData == null) {
+                res.status(404).send('Group not found');
+                return;
+            }
+            const field = 'progress.' + userId;
+            update(collectionEnum.Group, inviteData['group'], {
                 $push: { users: userId },
             });
-            update(collectionEnum.User, userId, {
-                $push: { groups: groupData['group'] },
-            });
-            console.log(
-                'added group:' + groupData['group'] + '. To user:' + userId,
+            updateFilter(
+                collectionEnum.Goal,
+                {
+                    _id: { $in: groupData['goals'] },
+                    user: { $exists: false },
+                },
+                {
+                    $set: { [field]: 0 },
+                },
             );
+            update(collectionEnum.User, userId, {
+                $push: { groups: inviteData['group'] },
+            });
         }
         await remove(collectionEnum.Invite, { _id: inviteId });
         parseOutput(InviteRespondRequestSchema, {}, res);
