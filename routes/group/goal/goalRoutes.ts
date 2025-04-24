@@ -12,6 +12,7 @@ import type { Request, Response } from 'express';
 import {
     GroupGoalCreateRequestSchema,
     GoalDeleteRequestSchema,
+    IndividualGoalCreateRequestSchema,
 } from '../../../Grouptivate-API/schemas/Goal';
 import express from 'express';
 
@@ -68,5 +69,41 @@ router.delete('/', async (req: Request, res: Response) => {
         });
 
         parseOutput(GoalDeleteRequestSchema, {}, res);
+    }
+})
+
+//Create individual goal
+router.post('/individual', async (req: Request, res: Response) => {
+    const parseRes = parseInput(IndividualGoalCreateRequestSchema, req, res)
+    if(parseRes.success){
+        const individualGoal = {
+            title: parseRes.title,
+            activity: parseRes.activity,
+            metric: parseRes.metric, 
+            target: parseRes.target,
+            group: parseRes.group,
+            user: parseRes.user,
+            progress: 0
+        }
+        if (
+            await existFilter(collectionEnum.Group, {
+                _id: parseRes.group,
+                users: parseRes.createruuid,
+            })
+        ) {
+            const response = {
+                uuid: (await insert(collectionEnum.Goal, individualGoal)).toString(),
+            };
+            parseOutput(IndividualGoalCreateRequestSchema, response, res);
+        } else {
+            res.status(401).send('Not a member of group');
+        }
+    }
+});
+
+router.delete('/individual', async (req: Request, res: Response) => {
+    const parseRes = parseInput(GoalDeleteRequestSchema, req, res)
+    if(parseRes.success){
+        
     }
 });
