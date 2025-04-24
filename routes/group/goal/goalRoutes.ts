@@ -55,10 +55,10 @@ router.delete('/', async (req: Request, res: Response) => {
         const goalId = parseRes.uuid;
 
         //Check if user should be able to delete goalId
-        const groupObjArray = await (
-            await getFilter(collectionEnum.Group, { users: userId }, { _id: 1 })
-        ).toArray();
-        const groupIdArray = [];
+        const groupObjArray =  
+            await (await getFilter(collectionEnum.Group, { users: userId }, { _id: 1 })
+        ).toArray()
+        const groupIdArray: Array<string> = [];
         for (const object of groupObjArray) {
             groupIdArray.push(object._id.toString());
         }
