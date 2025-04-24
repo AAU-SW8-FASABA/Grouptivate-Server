@@ -1,28 +1,18 @@
 import { parseInput, parseOutput } from '../../src/schemaParsers';
-import db, {
+import {
     insert,
     collectionEnum,
     update,
-    existFilter,
     getFilter,
     remove,
     get,
 } from '../../src/db';
 import type { Request, Response } from 'express';
 import {
-    GroupGoalCreateRequestSchema,
-    GoalDeleteRequestSchema,
-} from '../../Grouptivate-API/schemas/Goal';
-import {
     GroupCreateRequestSchema,
     GroupGetRequestSchema,
     GroupRemoveRequestSchema,
 } from '../../Grouptivate-API/schemas/Group';
-import {
-    InviteCreateRequestSchema,
-    InviteGetRequestSchema,
-    InviteRespondRequestSchema,
-} from '../../Grouptivate-API/schemas/Invite';
 import { router as inviteRouter } from './invite/inviteRoutes';
 import { router as goalRouter } from './goal/goalRoutes';
 import express from 'express';

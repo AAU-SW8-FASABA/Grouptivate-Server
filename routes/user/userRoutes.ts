@@ -5,7 +5,7 @@ import {
 } from '../../Grouptivate-API/schemas/User';
 import { UuidSchema } from '../../Grouptivate-API/schemas/Uuid';
 import { parseInput, parseOutput } from '../../src/schemaParsers';
-import db, { insert, collectionEnum, update, get } from '../../src/db';
+import { insert, collectionEnum, update, get } from '../../src/db';
 import type { Request, Response } from 'express';
 import express from 'express';
 
@@ -43,39 +43,39 @@ router.get('/', async (req: Request, res: Response) => {
     }
 });
 
-//User/sync --------------
-//Post the information required by the GET request.
-router.post('/sync', async (req: Request, res: Response) => {
-    const parseRes = safeParse(UuidSchema, req.body.uuid);
-    if (parseRes.success) {
-        const id: string = parseRes.output;
-        const result = await update(collectionEnum.User, id, {
-            $currentDate: {
-                lastSync: true,
-            },
-        });
-        res.send(result);
-    } else {
-        res.status(400).send('failed to parse input');
-    }
-});
+// //User/sync --------------
+// //Post the information required by the GET request.
+// router.post('/sync', async (req: Request, res: Response) => {
+//     const parseRes = safeParse(UuidSchema, req.body.uuid);
+//     if (parseRes.success) {
+//         const id: string = parseRes.output;
+//         const result = await update(collectionEnum.User, id, {
+//             $currentDate: {
+//                 lastSync: true,
+//             },
+//         });
+//         res.send(result);
+//     } else {
+//         res.status(400).send('failed to parse input');
+//     }
+// });
 
-//Get which information is required for the specified goals.
-router.get('/sync', async (req: Request, res: Response) => {
-    const userIdResult = safeParse(UuidSchema, req.body.user);
-    if (userIdResult.success) {
-        const userId = userIdResult.output; //new ObjectId(userIdResult.output)
-        console.log(userId);
-        const data = await db
-            .collection(collectionEnum.Goal)
-            .find({ user: userId })
-            .project({ activity: 1, metric: 1, _id: 0 });
-        const goals = [];
-        for await (const doc of data) {
-            goals.push(doc);
-        }
-        res.send(JSON.stringify(goals));
-    } else {
-        res.status(400).send(userIdResult.issues);
-    }
-});
+// //Get which information is required for the specified goals.
+// router.get('/sync', async (req: Request, res: Response) => {
+//     const userIdResult = safeParse(UuidSchema, req.body.user);
+//     if (userIdResult.success) {
+//         const userId = userIdResult.output; //new ObjectId(userIdResult.output)
+//         console.log(userId);
+//         const data = await db
+//             .collection(collectionEnum.Goal)
+//             .find({ user: userId })
+//             .project({ activity: 1, metric: 1, _id: 0 });
+//         const goals = [];
+//         for await (const doc of data) {
+//             goals.push(doc);
+//         }
+//         res.send(JSON.stringify(goals));
+//     } else {
+//         res.status(400).send(userIdResult.issues);
+//     }
+// });

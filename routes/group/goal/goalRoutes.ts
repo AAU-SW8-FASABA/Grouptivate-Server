@@ -1,5 +1,5 @@
 import { parseInput, parseOutput } from '../../../src/schemaParsers';
-import db, {
+import {
     insert,
     collectionEnum,
     update,
@@ -13,8 +13,12 @@ import {
     GroupGoalCreateRequestSchema,
     GoalDeleteRequestSchema,
     IndividualGoalCreateRequestSchema,
+    GoalPatchRequestSchema,
+    GroupGoalSchema,
 } from '../../../Grouptivate-API/schemas/Goal';
 import express from 'express';
+import { safeParse } from 'valibot';
+import { GroupSchema } from '../../../Grouptivate-API/schemas/Group';
 
 export const router = express.Router();
 
@@ -56,10 +60,10 @@ router.delete('/', async (req: Request, res: Response) => {
         const goalId = parseRes.uuid;
 
         //Check if user should be able to delete goalId
-        const groupObjArray = await (
-            await getFilter(collectionEnum.Group, { users: userId }, { _id: 1 })
-        ).toArray();
-        const groupIdArray = [];
+        const groupObjArray =  
+            await (await getFilter(collectionEnum.Group, { users: userId }, { _id: 1 })
+        ).toArray()
+        const groupIdArray: Array<string> = [];
         for (const object of groupObjArray) {
             groupIdArray.push(object._id.toString());
         }
@@ -107,3 +111,22 @@ router.delete('/individual', async (req: Request, res: Response) => {
         
     }
 });
+
+//Patch goal
+router.patch('/', async ( req: Request, res: Response) =>{
+    const parseRes = parseInput(GoalPatchRequestSchema, req, res)
+    if(parseRes.success){
+        //check if group or individual
+        console.log(parseRes)
+        if(safeParse(GroupGoalSchema,parseRes).success){
+            console.log("Group!")
+        }
+        else if(safeParse(GroupSchema, parseRes).success){
+            console.log("Individual!")
+        }
+        else{
+            console.log(":(")
+            //Should not be possible
+        }
+    }
+})
