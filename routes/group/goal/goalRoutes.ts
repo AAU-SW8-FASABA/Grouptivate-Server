@@ -18,30 +18,35 @@ import {
     GroupGoalSchema,
 } from '../../../Grouptivate-API/schemas/Goal';
 import express from 'express';
-import { safeParse } from 'valibot';
+import { record, safeParse } from 'valibot';
 import { GroupSchema } from '../../../Grouptivate-API/schemas/Group';
 import { ObjectId } from 'mongodb';
+import { Uuid } from '../../../Grouptivate-API/schemas/Uuid';
+import { PositiveNumber } from '../../../Grouptivate-API/schemas/PositiveNumber';
 
 export const router = express.Router();
 
 //Group/goal ------------------------
 //Create goal.
+//TODO: User creating the goal should be put in progress. 
+//TODO: Every user of the group should be put in the progress. 
+//TODO: When group is deleted, delete all goals they points at.
 router.post('/', async (req: Request, res: Response) => {
     const parseRes = parseInput(GroupGoalCreateRequestSchema, req, res);
     if (parseRes.success) {
-        const groupGoal = {
-            title: parseRes.title,
-            activity: parseRes.activity,
-            metric: parseRes.metric,
-            target: parseRes.target,
-            progress: [],
-        };
         if (
             await existFilter(collectionEnum.Group, {
                 _id: parseRes.group,
                 users: parseRes.user,
             })
         ) {
+            const groupGoal = {
+                title: parseRes.title,
+                activity: parseRes.activity,
+                metric: parseRes.metric,
+                target: parseRes.target,
+                progress: { [parseRes.User] : 0 },
+            };
             const goalId = (
                 await insert(collectionEnum.Goal, groupGoal)
             ).toString();
@@ -49,7 +54,7 @@ router.post('/', async (req: Request, res: Response) => {
                 uuid: goalId,
             };
             update(collectionEnum.Group, parseRes.group, {
-                $push: { goals: new ObjectId(goalId) },
+                $push: { goals: goalId },
             });
             parseOutput(GroupGoalCreateRequestSchema, response, res);
         } else {
@@ -67,14 +72,14 @@ router.delete('/', async (req: Request, res: Response) => {
 
         const groupData = await findOneFilter(collectionEnum.Group, {
             users: userId,
-            goals: new ObjectId(goalId),
+            goals: goalId,
         });
         if (groupData == null) {
             res.status(404).send('group not found, or no access to group');
             return;
         }
         await update(collectionEnum.Group, groupData['_id'].toString(), {
-            $pull: { goals: new ObjectId(goalId) },
+            $pull: { goals: goalId },
         });
         await remove(collectionEnum.Goal, { _id: goalId });
         parseOutput(GoalDeleteRequestSchema, {}, res);
@@ -106,7 +111,7 @@ router.post('/individual', async (req: Request, res: Response) => {
                 uuid: goalId,
             };
             update(collectionEnum.Group, parseRes.group, {
-                $push: { goals: new ObjectId(goalId) },
+                $push: { goals: goalId },
             });
             parseOutput(IndividualGoalCreateRequestSchema, response, res);
         } else {

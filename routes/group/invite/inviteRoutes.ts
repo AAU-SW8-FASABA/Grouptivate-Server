@@ -66,6 +66,7 @@ router.get('/', async (req: Request, res: Response) => {
 
 //group/invite/respond ---------------
 //Respond to invite.
+//TODO: When user is added to group they should be put in the group goals progress.
 router.post('/respond', async (req: Request, res: Response) => {
     const inviteResponse = parseInput(InviteRespondRequestSchema, req, res);
     if (inviteResponse.success) {
