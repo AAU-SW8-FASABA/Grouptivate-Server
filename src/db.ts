@@ -104,7 +104,7 @@ export async function insert(_collection: collectionEnum, data: object) {
 }
 
 export async function remove(_collection: collectionEnum, filter: object) {
-    //TODO: check om fejler
+    //TODO: check om fejler?
 
     if ('_id' in filter && typeof filter['_id'] == 'string') {
         filter['_id'] = new ObjectId(filter['_id']);
