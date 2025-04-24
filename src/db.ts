@@ -59,9 +59,12 @@ export async function getFilter(
     return collection.find(filter);
 }
 
-export async function findOneFilter(_collection: collectionEnum, filter: object,){
-    const collection = db.collection(_collection)
-    return collection.findOne(filter)
+export async function findOneFilter(
+    _collection: collectionEnum,
+    filter: object,
+) {
+    const collection = db.collection(_collection);
+    return collection.findOne(filter);
 }
 
 export async function existFilter(_collection: collectionEnum, filter: object) {
