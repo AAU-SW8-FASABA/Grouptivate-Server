@@ -50,7 +50,11 @@ export function parseInput(
         result.success = parseBody.success && (result?.success ?? true);
         if (!result.success) console.log(parseBody.issues);
         result.issues.concat(parseBody.issues);
-        Object.assign(result, parseBody.output);
+        if (Array.isArray(parseBody.output)) {
+            Object.assign(result, { body: parseBody.output });
+        } else {
+            Object.assign(result, parseBody.output);
+        }
     }
     if (!result.success) {
         res.status(400).send(result.issues);

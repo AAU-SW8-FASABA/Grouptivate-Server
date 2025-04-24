@@ -126,14 +126,42 @@ router.post('/individual', async (req: Request, res: Response) => {
 router.patch('/', async (req: Request, res: Response) => {
     const parseRes = parseInput(GoalPatchRequestSchema, req, res);
     if (parseRes.success) {
-        //check if group or individual
-        if (safeParse(GroupGoalSchema, parseRes).success) {
-            console.log('Group!');
-        } else if (safeParse(GroupSchema, parseRes).success) {
-            console.log('Individual!');
-        } else {
-            console.log(':(');
-            //Should not be possible
+        const goals = parseRes.body.reduce((obj, item) => {
+            obj[item.uuid] = item.progress;
+            return obj;
+        }, {});
+
+        //This will drop any goals that the user should not have access to, but will do so silently
+        const idObjArray = await (
+            await getFilter(
+                collectionEnum.Group,
+                { users: parseRes.user, goals: { $in: Object.keys(goals) } },
+                { _id: 0, goals: 1 },
+            )
+        ).toArray();
+
+        const validGoalIds = idObjArray.reduce(
+            (accumulator, value) => accumulator.concat(value.goals),
+            [],
+        );
+        const goalObjArray = await (
+            await getFilter(collectionEnum.Goal, { _id: { $in: validGoalIds } })
+        ).toArray();
+
+        for (const goal of goalObjArray) {
+            if ('user' in goal) {
+                //idividual goal
+                update(collectionEnum.Goal, goal._id, {
+                    $inc: { progress: goals[goal._id] },
+                });
+            } else {
+                //group goal
+                const field: string = 'progress.' + parseRes.user;
+                update(collectionEnum.Goal, goal._id, {
+                    $inc: { [field]: goals[goal._id] },
+                });
+            }
         }
+        parseOutput(GoalPatchRequestSchema, {}, res);
     }
 });
