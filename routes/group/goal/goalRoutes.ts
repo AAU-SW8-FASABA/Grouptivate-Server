@@ -5,6 +5,7 @@ import {
     update,
     existFilter,
     getFilter,
+    findOneFilter,
     remove,
     get,
 } from '../../../src/db';
@@ -17,8 +18,11 @@ import {
     GroupGoalSchema,
 } from '../../../Grouptivate-API/schemas/Goal';
 import express from 'express';
-import { safeParse } from 'valibot';
+import { record, safeParse } from 'valibot';
 import { GroupSchema } from '../../../Grouptivate-API/schemas/Group';
+import { ObjectId } from 'mongodb';
+import { Uuid } from '../../../Grouptivate-API/schemas/Uuid';
+import { PositiveNumber } from '../../../Grouptivate-API/schemas/PositiveNumber';
 
 export const router = express.Router();
 
@@ -27,23 +31,33 @@ export const router = express.Router();
 router.post('/', async (req: Request, res: Response) => {
     const parseRes = parseInput(GroupGoalCreateRequestSchema, req, res);
     if (parseRes.success) {
-        const group = {
-            title: parseRes.title,
-            activity: parseRes.activity,
-            metric: parseRes.metric,
-            target: parseRes.target,
-            group: parseRes.group,
-            progress: [],
-        };
         if (
             await existFilter(collectionEnum.Group, {
                 _id: parseRes.group,
                 users: parseRes.user,
             })
         ) {
-            const response = {
-                uuid: (await insert(collectionEnum.Goal, group)).toString(),
+            const groupData =
+                (await get(collectionEnum.Group, parseRes.group)) ?? [];
+            const goalProgress = {};
+            for (let user of groupData['users'])
+                goalProgress[user.toString()] = 0;
+            const groupGoal = {
+                title: parseRes.title,
+                activity: parseRes.activity,
+                metric: parseRes.metric,
+                target: parseRes.target,
+                progress: goalProgress,
             };
+            const goalId = (
+                await insert(collectionEnum.Goal, groupGoal)
+            ).toString();
+            const response = {
+                uuid: goalId,
+            };
+            update(collectionEnum.Group, parseRes.group, {
+                $push: { goals: goalId },
+            });
             parseOutput(GroupGoalCreateRequestSchema, response, res);
         } else {
             res.status(401).send('Not a member of group');
@@ -55,23 +69,21 @@ router.post('/', async (req: Request, res: Response) => {
 router.delete('/', async (req: Request, res: Response) => {
     const parseRes = parseInput(GoalDeleteRequestSchema, req, res);
     if (parseRes.success) {
-        console.log(parseRes);
         const userId = parseRes.user;
         const goalId = parseRes.uuid;
 
-        //Check if user should be able to delete goalId
-        const groupObjArray = await (
-            await getFilter(collectionEnum.Group, { users: userId }, { _id: 1 })
-        ).toArray();
-        const groupIdArray: Array<string> = [];
-        for (const object of groupObjArray) {
-            groupIdArray.push(object._id.toString());
-        }
-        remove(collectionEnum.Goal, {
-            group: { $in: groupIdArray },
-            _id: goalId,
+        const groupData = await findOneFilter(collectionEnum.Group, {
+            users: userId,
+            goals: goalId,
         });
-
+        if (groupData == null) {
+            res.status(404).send('group not found, or no access to group');
+            return;
+        }
+        await update(collectionEnum.Group, groupData['_id'].toString(), {
+            $pull: { goals: goalId },
+        });
+        await remove(collectionEnum.Goal, { _id: goalId });
         parseOutput(GoalDeleteRequestSchema, {}, res);
     }
 });
@@ -94,21 +106,19 @@ router.post('/individual', async (req: Request, res: Response) => {
                 users: parseRes.createruuid,
             })
         ) {
+            const goalId = (
+                await insert(collectionEnum.Goal, individualGoal)
+            ).toString();
             const response = {
-                uuid: (
-                    await insert(collectionEnum.Goal, individualGoal)
-                ).toString(),
+                uuid: goalId,
             };
+            update(collectionEnum.Group, parseRes.group, {
+                $push: { goals: goalId },
+            });
             parseOutput(IndividualGoalCreateRequestSchema, response, res);
         } else {
             res.status(401).send('Not a member of group');
         }
-    }
-});
-
-router.delete('/individual', async (req: Request, res: Response) => {
-    const parseRes = parseInput(GoalDeleteRequestSchema, req, res);
-    if (parseRes.success) {
     }
 });
 
