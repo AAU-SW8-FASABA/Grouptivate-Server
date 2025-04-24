@@ -128,7 +128,6 @@ export async function remove(
     _collection: collectionEnum,
     filter: Record<string, Record<string, any> | string>,
 ) {
-
     if ('_id' in filter) {
         if (typeof filter['_id'] == 'string')
             filter['_id'] = new ObjectId(filter['_id']);
