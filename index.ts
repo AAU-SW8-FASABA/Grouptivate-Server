@@ -394,7 +394,7 @@ app.delete("/group/invite", async (req: Request, res: Response) => {
 app.post("/group/invite/respond", async (req: Request, res: Response) => {
   const inviteResponse = parseInput(InviteRespondRequestSchema, req, res)
   if(inviteResponse.success){
-    if(inviteResponse.InviteRespondRequestBodySchema == true){
+    if(inviteResponse.requestBody == true){
       const userId = inviteResponse.user
       const inviteId = inviteResponse.invite
 
