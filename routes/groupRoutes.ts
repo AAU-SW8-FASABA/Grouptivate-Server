@@ -42,7 +42,6 @@ router.post("/", async (req: Request, res: Response) => {
         return
       }
       parseOutput(GroupGetRequestSchema, data, res)
-      // res.send(convertObj(data))
     }
   });
   
@@ -51,7 +50,7 @@ router.post("/", async (req: Request, res: Response) => {
   router.post("/invite", async (req: Request, res: Response) => {
     const result = parseInput(InviteCreateRequestSchema,req, res)
     if(result.success){
-      const id = await insert(collectionEnum.Invite, {
+      await insert(collectionEnum.Invite, {
         group: result.group,
         invited: result.invited,
         inviter: result.user
@@ -105,7 +104,6 @@ router.post("/", async (req: Request, res: Response) => {
         update(collectionEnum.User, userId, {
           $push: {groups: groupData['group']}
         })
-        console.log("added group:" + groupData['group'] + ". To user:" + userId)
       }
       await remove(collectionEnum.Invite, {_id: inviteId})
       parseOutput(InviteRespondRequestSchema, {}, res)
@@ -132,7 +130,6 @@ router.post("/", async (req: Request, res: Response) => {
       for(const group of await emptyGroups.toArray()){
         remove(collectionEnum.Goal, {group: group._id.toString()})
         remove(collectionEnum.Group, {_id: group._id.toString()})
-        console.log(group._id)
       }
     }
   });
