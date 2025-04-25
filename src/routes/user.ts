@@ -1,12 +1,15 @@
+// API schema imports
 import {
     UserCreateRequestSchema,
     UserGetRequestSchema,
-    LoginRequestSchema,
 } from '../../Grouptivate-API/schemas/User';
-import UserModel from '../models/UserModel';
+import { LoginRequestSchema } from '../../Grouptivate-API/schemas/Login';
 
-import { parseInput, parseOutput } from '../schemaParsers';
-import { insert, CollectionEnum, get, getUserByName } from '../db';
+// DB imports
+import UserModel from '../models/UserModel';
+import SessionModel from '../models/SessionModel';
+
+// Other imports
 import type { Request, Response } from 'express';
 import express from 'express';
 import argon2 from 'argon2';
@@ -15,25 +18,15 @@ import * as v from 'valibot';
 
 export const router = express.Router();
 
-//User -----------------
-//Create user
-// router.post('/', async (req: Request, res: Response) => {
-//     const result = parseInput(UserCreateRequestSchema, req, res);
+function setCookie(res: Response, token: string) {
+    res.cookie('Authorization', token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'strict',
+    });
+}
 
-//     if (result.success) {
-//         const id = await insert(CollectionEnum.User, {
-//             name: result.name,
-//             password: await argon2.hash(result.password),
-//             groups: [],
-//             lastSync: new Date(),
-//         });
-
-//         const token = crypto.randomBytes(32).toString('hex');
-//         await insert(CollectionEnum.Session, { token, id });
-
-//         parseOutput(UserCreateRequestSchema, { token }, res);
-//     }
-// });
+//TODO: sendError helper? MAYBE (maybe even custom safeParse call that also logs and s)
 
 router.post('/', async (req: Request, res: Response) => {
     const parsedBody = v.safeParse(
@@ -42,23 +35,20 @@ router.post('/', async (req: Request, res: Response) => {
     );
 
     if (!parsedBody.success) {
-        console.log(
-            "Failed to parse 'post' request to '/user': ",
-            parsedBody.issues,
-        );
-        res.status(401).send();
+        const error = `Failed to parse input for 'post' request to '/user'`;
+        console.log(error + ': ', parsedBody.issues);
+        res.status(400).json({ error });
         return;
     }
 
-    // Check if user with this name already exists
+    // Check if a user with this name already exists
     const exists = await UserModel.findOne({ name: parsedBody.output.name });
     if (exists !== null) {
-        console.log('User with this name already exists');
         res.status(409).send('User with this name already exists');
         return;
     }
 
-    // Insert if possible
+    // Insert user
     const id = await UserModel.insertOne({
         name: parsedBody.output.name,
         password: await argon2.hash(parsedBody.output.password),
@@ -66,97 +56,82 @@ router.post('/', async (req: Request, res: Response) => {
         lastSync: new Date(0).toISOString(),
     });
 
+    // Create token
     const token = crypto.randomBytes(32).toString('hex');
+    await SessionModel.insertOne({ token, userId: id });
 
-    await insert(CollectionEnum.Session, { token, userId: id });
+    // Set Authorization cookie
+    setCookie(res, token);
 
-    parseOutput(UserCreateRequestSchema, { token }, res);
+    // Send response
+    res.sendStatus(200);
 });
-
-// Check if user exists
 
 //Get user information.
 router.get('/', async (req: Request, res: Response) => {
-    if (!req.sessionToken) {
-        res.status(401).send('No session found');
+    const user = await UserModel.findOne({ _id: req.userId });
+
+    // Check if a user was found
+    if (!user) {
+        const error = `User not found`;
+        console.log(error);
+        res.status(404).json({ error });
         return;
     }
 
-    const user = await get(CollectionEnum.User, req.sessionToken);
-    if (user == null) {
-        res.status(404).send('Failed to get user');
-    } else {
-        parseOutput(UserGetRequestSchema, user, res);
+    // Parse response body
+    const parsedOutput = v.safeParse(UserGetRequestSchema.responseBody, {
+        uuid: user._id,
+        name: user.name,
+        groups: user.groupIds,
+    });
+
+    if (!parsedOutput.success) {
+        const error = `Failed to parse response body at 'GET' for '/user'`;
+        console.log(error + ': ', parsedOutput.issues);
+        res.status(500).json({ error });
+        return;
     }
+
+    // Send response
+    res.status(200).json(parsedOutput.output);
 });
 
+// The session token has already been verified by the middleware
 router.post('/verify', async (req: Request, res: Response) => {
-    res.cookie('session', req.sessionToken, {
-        secure: true,
-        httpOnly: true,
-        sameSite: 'strict',
-        maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days,
-    });
+    res.sendStatus(200);
 });
 
 router.post('/login', async (req: Request, res: Response) => {
-    const result = parseInput(LoginRequestSchema, req, res);
-    if (result.success) {
-        const user = await getUserByName(result.name);
-        if (user === null || user === undefined) {
-            res.status(404).send('User not found');
-            return;
-        }
+    const parsedRequest = v.safeParse(LoginRequestSchema.requestBody, req.body);
 
-        const isPasswordCorrect = await argon2.verify(
-            user.password,
-            result.password,
-        );
-        if (!isPasswordCorrect) {
-            res.status(401).send('Incorrect password');
-            return;
-        }
-
-        const token = crypto.randomBytes(32).toString('hex');
-        await insert(CollectionEnum.Session, { token, id: user._id });
-
-        parseOutput(LoginRequestSchema, { token }, res);
+    if (!parsedRequest.success) {
+        const error = `Failed to parse body for 'POST' at '/login'`;
+        console.log(error + ': ', parsedRequest.issues);
+        res.status(404).json({ error });
+        return;
     }
+
+    const user = await UserModel.findOne({ name: parsedRequest.output.name });
+
+    // Check if the user exist and the password is correct
+    if (
+        !user ||
+        !(await argon2.verify(user.password, parsedRequest.output.password))
+    ) {
+        const error = 'Incorrect login information';
+        console.log(`'post' @ '/login': ${error}`);
+        res.status(401).json({ error });
+        return;
+    }
+
+    //TODO: Is this a correct way to generate session tokens?
+    const token = crypto.randomBytes(32).toString('hex');
+    await SessionModel.insertOne({ token, userId: user._id });
+
+    // Set Authorization cookie
+    setCookie(res, token);
+
+    // Send response
+    res.sendStatus(200);
 });
-
-// //User/sync --------------
-// //Post the information required by the GET request.
-// router.post('/sync', async (req: Request, res: Response) => {
-//     const parseRes = safeParse(UuidSchema, req.body.uuid);
-//     if (parseRes.success) {
-//         const id: string = parseRes.output;
-//         const result = await update(CollectionEnum.User, id, {
-//             $currentDate: {
-//                 lastSync: true,
-//             },
-//         });
-//         res.send(result);
-//     } else {
-//         res.status(400).send('failed to parse input');
-//     }
-// });
-
-// //Get which information is required for the specified goals.
-// router.get('/sync', async (req: Request, res: Response) => {
-//     const userIdResult = safeParse(UuidSchema, req.body.user);
-//     if (userIdResult.success) {
-//         const userId = userIdResult.output; //new ObjectId(userIdResult.output)
-//         console.log(userId);
-//         const data = await db
-//             .collection(CollectionEnum.Goal)
-//             .find({ user: userId })
-//             .project({ activity: 1, metric: 1, _id: 0 });
-//         const goals = [];
-//         for await (const doc of data) {
-//             goals.push(doc);
-//         }
-//         res.send(JSON.stringify(goals));
-//     } else {
-//         res.status(400).send(userIdResult.issues);
-//     }
-// });

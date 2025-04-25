@@ -11,7 +11,7 @@ const UserSchema = new MG.Schema({
         required: true,
     },
     password: {
-        type: [String],
+        type: String,
         required: true,
     },
     lastSync: {

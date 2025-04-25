@@ -1,5 +1,5 @@
 import type { RequestHandler, Request } from 'express';
-import { getSessionFromToken } from './db';
+import SessionModel from './models/SessionModel';
 
 export const authMiddleware: RequestHandler = async (req, res, next) => {
     if (
@@ -21,12 +21,12 @@ export const authMiddleware: RequestHandler = async (req, res, next) => {
         return;
     }
 
-    const session = await getSessionFromToken(token);
+    const session = await SessionModel.findOne({ token });
     if (!session) {
         res.status(401).json({ message: 'No active session' });
         return;
     }
 
-    req.sessionToken = session.id;
+    req.userId = session.userId;
     next();
 };
