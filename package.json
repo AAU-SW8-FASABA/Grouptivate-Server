@@ -22,8 +22,10 @@
     },
     "dependencies": {
         "@dotenvx/dotenvx": "^1.39.1",
+        "argon2": "^0.43.0",
         "express": "^5.1.0",
         "mongodb": "6.15",
+        "mongoose": "^8.13.2",
         "valibot": "^1.0.0"
     },
     "repository": {

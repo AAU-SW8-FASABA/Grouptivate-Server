@@ -1,16 +1,20 @@
 import { error } from 'console';
 import { MongoClient, ObjectId, type WithId } from 'mongodb';
+import mg from 'mongoose';
+import { optional } from 'valibot';
 
-export enum collectionEnum {
-    Goal = 'Goal',
+export enum CollectionEnum {
+    GroupGoal = 'GroupGoal',
+    IndividualGoal = 'IndividualGoal',
     Group = 'Group',
     User = 'User',
     Invite = 'Invite',
+    Session = 'Session',
 }
 
-const connectionString = process.env.ATLAS_URI || '';
+const connectionString = process.env.ATLAS_URI;
 
-if (connectionString == '') throw error('ATLAS_URI is not set');
+if (!connectionString) throw error('ATLAS_URI is not set');
 const client = new MongoClient(connectionString);
 
 let conn = client;
@@ -22,23 +26,21 @@ try {
 
 let db = conn.db('Grouptivate');
 
-// export default db;
-
-export async function get(_collection: collectionEnum, id: string) {
+export async function get(_collection: CollectionEnum, id: string) {
     try {
         const uuid = new ObjectId(id);
         const collection = db.collection(_collection);
         switch (_collection) {
-            case collectionEnum.Goal:
+            case CollectionEnum.GroupGoal:
+            case CollectionEnum.IndividualGoal:
                 console.log('Not implemented');
-
                 return;
-            case collectionEnum.Group:
-            case collectionEnum.User:
+            case CollectionEnum.Group:
+            case CollectionEnum.User:
                 const query = { _id: uuid };
                 const res = await collection.findOne(query);
                 return res;
-            case collectionEnum.Invite:
+            case CollectionEnum.Invite:
                 //const querya = "user: uuid};
                 const invites = await collection.findOne({ _id: uuid });
                 return invites;
@@ -49,8 +51,33 @@ export async function get(_collection: collectionEnum, id: string) {
         console.log(e);
     }
 }
+
+export async function getSessionFromToken(token: string) {
+    try {
+        return await db.collection(CollectionEnum.Session).findOne({ token });
+    } catch (e) {
+        console.log(e);
+    }
+}
+
+export async function getUserByName(name: string) {
+    try {
+        return await db.collection(CollectionEnum.User).findOne({ name });
+    } catch (e) {
+        console.log(e);
+    }
+}
+
+export async function insertSessionToken(token: string) {
+    try {
+        return await db.collection(CollectionEnum.Session).insertOne({ token });
+    } catch (e) {
+        console.log(e);
+    }
+}
+
 export async function getFilter(
-    _collection: collectionEnum,
+    _collection: CollectionEnum,
     filter: object,
     project?: object,
 ) {
@@ -59,7 +86,7 @@ export async function getFilter(
     return collection.find(filter);
 }
 
-export async function existFilter(_collection: collectionEnum, filter: object) {
+export async function existFilter(_collection: CollectionEnum, filter: object) {
     if ('_id' in filter && typeof filter['_id'] == 'string') {
         filter['_id'] = new ObjectId(filter['_id']);
     }
@@ -69,7 +96,7 @@ export async function existFilter(_collection: collectionEnum, filter: object) {
 }
 
 export async function update(
-    _collection: collectionEnum,
+    _collection: CollectionEnum,
     id: string,
     data: object,
 ) {
@@ -79,7 +106,7 @@ export async function update(
     collection.updateOne({ _id: uuid }, data);
 }
 export async function updateFilter(
-    _collection: collectionEnum,
+    _collection: CollectionEnum,
     filter: object,
     data: object,
 ) {
@@ -88,14 +115,14 @@ export async function updateFilter(
     collection.updateOne(filter, data);
 }
 
-export async function insert(_collection: collectionEnum, data: object) {
+export async function insert(_collection: CollectionEnum, data: object) {
     const collection = db.collection(_collection);
     if ('uuid' in data) delete data['uuid'];
     const result = await collection.insertOne(data);
     return result.insertedId;
 }
 
-export async function remove(_collection: collectionEnum, filter: object) {
+export async function remove(_collection: CollectionEnum, filter: object) {
     //TODO: check om fejler
 
     if ('_id' in filter && typeof filter['_id'] == 'string') {

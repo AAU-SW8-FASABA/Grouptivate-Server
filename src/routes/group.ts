@@ -1,20 +1,13 @@
-import { parseInput, parseOutput } from '../../src/schemaParsers';
-import {
-    insert,
-    collectionEnum,
-    update,
-    getFilter,
-    remove,
-    get,
-} from '../../src/db';
+import { parseInput, parseOutput } from '../schemaParsers';
+import { insert, CollectionEnum, update, getFilter, remove, get } from '../db';
 import type { Request, Response } from 'express';
 import {
     GroupCreateRequestSchema,
     GroupGetRequestSchema,
     GroupRemoveRequestSchema,
-} from '../../Grouptivate-API/schemas/Group';
-import { router as inviteRouter } from './invite/inviteRoutes';
-import { router as goalRouter } from './goal/goalRoutes';
+} from '../../../Grouptivate-API/schemas/Group';
+import { router as inviteRouter } from './group/invite';
+import { router as goalRouter } from './group/goal';
 import express from 'express';
 
 export const router = express.Router();
@@ -33,12 +26,12 @@ router.post('/', async (req: Request, res: Response) => {
             streak: 0,
         };
         //Create group
-        const groupId = await insert(collectionEnum.Group, mockObj);
+        const groupId = await insert(CollectionEnum.Group, mockObj);
 
         //Add group to user table
         if (groupId == null) res.status(500).send('Failed to insert');
         else {
-            update(collectionEnum.User, parseRes.uuid, {
+            update(CollectionEnum.User, parseRes.uuid, {
                 $push: { groups: groupId },
             });
             parseOutput(
@@ -54,7 +47,7 @@ router.post('/', async (req: Request, res: Response) => {
 router.get('/', async (req: Request, res: Response) => {
     const parseRes = parseInput(GroupGetRequestSchema, req, res);
     if (parseRes.success) {
-        const data = await get(collectionEnum.Group, parseRes.uuid);
+        const data = await get(CollectionEnum.Group, parseRes.uuid);
         if (data == null) {
             res.status(404).send('group not found');
             return;
@@ -71,22 +64,23 @@ router.post('/remove', async (req: Request, res: Response) => {
     if (parseRes.success) {
         const groupId = parseRes.group;
         const userId = parseRes.user;
-        update(collectionEnum.Group, groupId, {
+        update(CollectionEnum.Group, groupId, {
             $pull: { users: userId },
         });
-        update(collectionEnum.User, userId, {
+        update(CollectionEnum.User, userId, {
             $pull: { groups: groupId },
         });
         parseOutput(GroupRemoveRequestSchema, {}, res);
 
         const emptyGroups = await getFilter(
-            collectionEnum.Group,
+            CollectionEnum.Group,
             { users: { $size: 0 } },
             { _id: 1 },
         );
         for (const group of await emptyGroups.toArray()) {
-            remove(collectionEnum.Goal, { group: group._id.toString() });
-            remove(collectionEnum.Group, { _id: group._id.toString() });
+            //TODO: Fix individual goals
+            remove(CollectionEnum.GroupGoal, { group: group._id.toString() });
+            remove(CollectionEnum.Group, { _id: group._id.toString() });
             console.log(group._id);
         }
     }

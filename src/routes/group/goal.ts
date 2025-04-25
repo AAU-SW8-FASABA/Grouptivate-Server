@@ -1,13 +1,13 @@
-import { parseInput, parseOutput } from '../../../src/schemaParsers';
+import { parseInput, parseOutput } from '../../schemaParsers';
 import {
     insert,
-    collectionEnum,
+    CollectionEnum,
     update,
     existFilter,
     getFilter,
     remove,
     get,
-} from '../../../src/db';
+} from '../../db';
 import type { Request, Response } from 'express';
 import {
     GroupGoalCreateRequestSchema,
@@ -18,7 +18,7 @@ import {
 } from '../../../Grouptivate-API/schemas/Goal';
 import express from 'express';
 import { safeParse } from 'valibot';
-import { GroupSchema } from '../../../Grouptivate-API/schemas/Group';
+import { GroupSchema } from '../../../../Grouptivate-API/schemas/Group';
 
 export const router = express.Router();
 
@@ -36,13 +36,16 @@ router.post('/', async (req: Request, res: Response) => {
             progress: [],
         };
         if (
-            await existFilter(collectionEnum.Group, {
+            await existFilter(CollectionEnum.Group, {
                 _id: parseRes.group,
                 users: parseRes.user,
             })
         ) {
             const response = {
-                uuid: (await insert(collectionEnum.Goal, group)).toString(),
+                // TODO: Fix individual goals
+                uuid: (
+                    await insert(CollectionEnum.GroupGoal, group)
+                ).toString(),
             };
             parseOutput(GroupGoalCreateRequestSchema, response, res);
         } else {
@@ -60,42 +63,46 @@ router.delete('/', async (req: Request, res: Response) => {
         const goalId = parseRes.uuid;
 
         //Check if user should be able to delete goalId
-        const groupObjArray =  
-            await (await getFilter(collectionEnum.Group, { users: userId }, { _id: 1 })
-        ).toArray()
+        const groupObjArray = await (
+            await getFilter(CollectionEnum.Group, { users: userId }, { _id: 1 })
+        ).toArray();
         const groupIdArray: Array<string> = [];
         for (const object of groupObjArray) {
             groupIdArray.push(object._id.toString());
         }
-        remove(collectionEnum.Goal, {
+        //TODO: Fix individual goals
+        remove(CollectionEnum.GroupGoal, {
             group: { $in: groupIdArray },
             _id: goalId,
         });
 
         parseOutput(GoalDeleteRequestSchema, {}, res);
     }
-})
+});
 
 //Create individual goal
 router.post('/individual', async (req: Request, res: Response) => {
-    const parseRes = parseInput(IndividualGoalCreateRequestSchema, req, res)
-    if(parseRes.success){
+    const parseRes = parseInput(IndividualGoalCreateRequestSchema, req, res);
+    if (parseRes.success) {
         const individualGoal = {
             title: parseRes.title,
             activity: parseRes.activity,
-            metric: parseRes.metric, 
+            metric: parseRes.metric,
             target: parseRes.target,
             user: parseRes.user,
-            progress: 0
-        }
+            progress: 0,
+        };
         if (
-            await existFilter(collectionEnum.Group, {
+            await existFilter(CollectionEnum.Group, {
                 _id: parseRes.group,
                 users: parseRes.createruuid,
             })
         ) {
             const response = {
-                uuid: (await insert(collectionEnum.Goal, individualGoal)).toString(),
+                //TODO: Fix individual goals
+                uuid: (
+                    await insert(CollectionEnum.GroupGoal, individualGoal)
+                ).toString(),
             };
             parseOutput(IndividualGoalCreateRequestSchema, response, res);
         } else {
@@ -105,27 +112,24 @@ router.post('/individual', async (req: Request, res: Response) => {
 });
 
 router.delete('/individual', async (req: Request, res: Response) => {
-    const parseRes = parseInput(GoalDeleteRequestSchema, req, res)
-    if(parseRes.success){
-        
+    const parseRes = parseInput(GoalDeleteRequestSchema, req, res);
+    if (parseRes.success) {
     }
 });
 
 //Patch goal
-router.patch('/', async ( req: Request, res: Response) =>{
-    const parseRes = parseInput(GoalPatchRequestSchema, req, res)
-    if(parseRes.success){
+router.patch('/', async (req: Request, res: Response) => {
+    const parseRes = parseInput(GoalPatchRequestSchema, req, res);
+    if (parseRes.success) {
         //check if group or individual
-        console.log(parseRes)
-        if(safeParse(GroupGoalSchema,parseRes).success){
-            console.log("Group!")
-        }
-        else if(safeParse(GroupSchema, parseRes).success){
-            console.log("Individual!")
-        }
-        else{
-            console.log(":(")
+        console.log(parseRes);
+        if (safeParse(GroupGoalSchema, parseRes).success) {
+            console.log('Group!');
+        } else if (safeParse(GroupSchema, parseRes).success) {
+            console.log('Individual!');
+        } else {
+            console.log(':(');
             //Should not be possible
         }
     }
-})
+});

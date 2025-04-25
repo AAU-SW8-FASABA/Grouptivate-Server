@@ -47,7 +47,7 @@ export function parseInput(
         Object.keys(inputSchema?.requestBody).length > 0
     ) {
         const parseBody = safeParse(inputSchema.requestBody, req.body);
-        console.log(parseBody.output);
+        //console.log(parseBody.output); // thisa leaked my passworda
         result.success = parseBody.success && (result?.success ?? true);
         if (!result.success) console.log(parseBody.issues);
         result.issues.concat(parseBody.issues);

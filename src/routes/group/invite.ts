@@ -1,18 +1,18 @@
-import { parseInput, parseOutput } from '../../../src/schemaParsers';
+import { parseInput, parseOutput } from '../../schemaParsers';
 import {
     insert,
-    collectionEnum,
+    CollectionEnum,
     update,
     getFilter,
     remove,
     get,
-} from '../../../src/db';
+} from '../../db';
 import type { Request, Response } from 'express';
 import {
     InviteCreateRequestSchema,
     InviteGetRequestSchema,
     InviteRespondRequestSchema,
-} from '../../../Grouptivate-API/schemas/Invite';
+} from '../../../../Grouptivate-API/schemas/Invite';
 import express from 'express';
 
 export const router = express.Router();
@@ -22,7 +22,7 @@ export const router = express.Router();
 router.post('/', async (req: Request, res: Response) => {
     const result = parseInput(InviteCreateRequestSchema, req, res);
     if (result.success) {
-        await insert(collectionEnum.Invite, {
+        await insert(CollectionEnum.Invite, {
             group: result.group,
             invited: result.invited,
             inviter: result.user,
@@ -39,7 +39,7 @@ router.get('/', async (req: Request, res: Response) => {
         const userId = parseRes.user;
         const data = await (
             await getFilter(
-                collectionEnum.Invite,
+                CollectionEnum.Invite,
                 { invited: userId },
                 { invited: 0 },
             )
@@ -55,9 +55,9 @@ router.get('/', async (req: Request, res: Response) => {
     const inviteIdResult = safeParse(UuidSchema,req.body.uuid)
     if(inviteIdResult.success){
       const inviteuuid = new ObjectId(inviteIdResult.output)
-      const result = await remove(collectionEnum.Invite, {_id: inviteuuid})
+      const result = await remove(CollectionEnum.Invite, {_id: inviteuuid})
       res.send(result)
-    } 
+    }
     else{
       res.status(400).send("Failed to parse input")
     }
@@ -72,22 +72,22 @@ router.post('/respond', async (req: Request, res: Response) => {
         const inviteId = inviteResponse.invite;
         if (inviteResponse.accepted == true) {
             const userId = inviteResponse.user;
-            const groupData = await get(collectionEnum.Invite, inviteId);
+            const groupData = await get(CollectionEnum.Invite, inviteId);
             if (groupData == null) {
                 res.status(404).send('Invite not found');
                 return;
             }
-            update(collectionEnum.Group, groupData['group'], {
+            update(CollectionEnum.Group, groupData['group'], {
                 $push: { users: userId },
             });
-            update(collectionEnum.User, userId, {
+            update(CollectionEnum.User, userId, {
                 $push: { groups: groupData['group'] },
             });
             console.log(
                 'added group:' + groupData['group'] + '. To user:' + userId,
             );
         }
-        await remove(collectionEnum.Invite, { _id: inviteId });
+        await remove(CollectionEnum.Invite, { _id: inviteId });
         parseOutput(InviteRespondRequestSchema, {}, res);
     }
 });
