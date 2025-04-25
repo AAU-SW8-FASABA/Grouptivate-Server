@@ -26,8 +26,6 @@ function setCookie(res: Response, token: string) {
     });
 }
 
-//TODO: sendError helper? MAYBE (maybe even custom safeParse call that also logs and s)
-
 router.post('/', async (req: Request, res: Response) => {
     const parsedBody = v.safeParse(
         UserCreateRequestSchema.requestBody,
@@ -41,24 +39,29 @@ router.post('/', async (req: Request, res: Response) => {
         return;
     }
 
-    // Check if a user with this name already exists
-    const exists = await UserModel.findOne({ name: parsedBody.output.name });
-    if (exists !== null) {
+    // Creates user if there is no existing user with that name
+    const insertResult = await UserModel.updateOne(
+        { name: parsedBody.output.name },
+        {
+            $setOnInsert: {
+                name: parsedBody.output.name,
+                password: await argon2.hash(parsedBody.output.password),
+                groupIds: [],
+                lastSync: new Date(0).toISOString(),
+            },
+        },
+        { upsert: true },
+    );
+
+    // If the insert failed, the user already exists
+    if (!insertResult.upsertedId) {
         res.status(409).send('User with this name already exists');
         return;
     }
 
-    // Insert user
-    const id = await UserModel.insertOne({
-        name: parsedBody.output.name,
-        password: await argon2.hash(parsedBody.output.password),
-        groupIds: [],
-        lastSync: new Date(0).toISOString(),
-    });
-
     // Create token
     const token = crypto.randomBytes(32).toString('hex');
-    await SessionModel.insertOne({ token, userId: id });
+    await SessionModel.insertOne({ token, userId: insertResult.upsertedId });
 
     // Set Authorization cookie
     setCookie(res, token);
@@ -69,7 +72,7 @@ router.post('/', async (req: Request, res: Response) => {
 
 //Get user information.
 router.get('/', async (req: Request, res: Response) => {
-    const user = await UserModel.findOne({ _id: req.userId });
+    const user = await UserModel.findById(req.userId);
 
     // Check if a user was found
     if (!user) {
@@ -80,25 +83,24 @@ router.get('/', async (req: Request, res: Response) => {
     }
 
     // Parse response body
-    const parsedOutput = v.safeParse(UserGetRequestSchema.responseBody, {
-        uuid: user._id,
+    const parsedResponse = v.safeParse(UserGetRequestSchema.responseBody, {
         name: user.name,
         groups: user.groupIds,
     });
 
-    if (!parsedOutput.success) {
+    if (!parsedResponse.success) {
         const error = `Failed to parse response body at 'GET' for '/user'`;
-        console.log(error + ': ', parsedOutput.issues);
+        console.log(error + ': ', parsedResponse.issues);
         res.status(500).json({ error });
         return;
     }
 
     // Send response
-    res.status(200).json(parsedOutput.output);
+    res.status(200).json(parsedResponse.output);
 });
 
 // The session token has already been verified by the middleware
-router.post('/verify', async (req: Request, res: Response) => {
+router.get('/verify', async (req: Request, res: Response) => {
     res.sendStatus(200);
 });
 
@@ -125,9 +127,14 @@ router.post('/login', async (req: Request, res: Response) => {
         return;
     }
 
-    //TODO: Is this a correct way to generate session tokens?
     const token = crypto.randomBytes(32).toString('hex');
-    await SessionModel.insertOne({ token, userId: user._id });
+
+    // Create or overwrite session token
+    await SessionModel.updateOne(
+        { userId: user._id },
+        { $set: { token } },
+        { upsert: true },
+    );
 
     // Set Authorization cookie
     setCookie(res, token);

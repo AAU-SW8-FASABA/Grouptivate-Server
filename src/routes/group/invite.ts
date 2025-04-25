@@ -1,3 +1,4 @@
+import express, { type Request, type Response } from 'express';
 import { parseInput, parseOutput } from '../../schemaParsers';
 import {
     insert,
@@ -7,13 +8,11 @@ import {
     remove,
     get,
 } from '../../db';
-import type { Request, Response } from 'express';
 import {
     InviteCreateRequestSchema,
     InviteGetRequestSchema,
     InviteRespondRequestSchema,
-} from '../../../../Grouptivate-API/schemas/Invite';
-import express from 'express';
+} from '../../../Grouptivate-API/schemas/Invite';
 
 export const router = express.Router();
 
