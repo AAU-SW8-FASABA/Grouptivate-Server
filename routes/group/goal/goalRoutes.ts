@@ -7,7 +7,7 @@ import {
     getFilter,
     findOneFilter,
     remove,
-    get
+    get,
 } from '../../../src/db';
 import type { Request, Response } from 'express';
 import {
