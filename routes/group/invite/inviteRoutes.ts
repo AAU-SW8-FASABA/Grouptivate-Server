@@ -21,12 +21,12 @@ export const router = express.Router();
 //Group/invite ------------------
 //Create a group invitation.
 router.post('/', async (req: Request, res: Response) => {
-    const result = parseInput(InviteCreateRequestSchema, req, res);
-    if (result.success) {
+    const parseRes = parseInput(InviteCreateRequestSchema, req, res);
+    if (parseRes.success) {
         await insert(collectionEnum.Invite, {
-            group: result.group,
-            invited: result.invited,
-            inviter: result.user,
+            group: parseRes.group,
+            invited: parseRes.invited,
+            inviter: parseRes.user,
         });
 
         parseOutput(InviteCreateRequestSchema, {}, res);
@@ -52,27 +52,27 @@ router.get('/', async (req: Request, res: Response) => {
 //Delete a group invitation.
 //No longer needed, old implementation is part of post/group/invite/respond
 /*
-  router.delete("/group/invite", async (req: Request, res: Response) => {
-    const inviteIdResult = safeParse(UuidSchema,req.body.uuid)
-    if(inviteIdResult.success){
-      const inviteuuid = new ObjectId(inviteIdResult.output)
-      const result = await remove(collectionEnum.Invite, {_id: inviteuuid})
-      res.send(result)
-    } 
-    else{
-      res.status(400).send("Failed to parse input")
-    }
-  });
-  */
+router.delete("/group/invite", async (req: Request, res: Response) => {
+const parseRes = safeParse(UuidSchema,req.body.uuid)
+if(parseRes.success){
+    const inviteuuid = new ObjectId(parseRes.output)
+    const result = await remove(collectionEnum.Invite, {_id: inviteuuid})
+    res.send(result)
+} 
+else{
+    res.status(400).send("Failed to parse input")
+}
+});
+*/
 
 //group/invite/respond ---------------
 //Respond to invite.
 router.post('/respond', async (req: Request, res: Response) => {
-    const inviteResponse = parseInput(InviteRespondRequestSchema, req, res);
-    if (inviteResponse.success) {
-        const inviteId = inviteResponse.invite;
-        if (inviteResponse.accepted == true) {
-            const userId = inviteResponse.user;
+    const parseRes = parseInput(InviteRespondRequestSchema, req, res);
+    if (parseRes.success) {
+        const inviteId = parseRes.invite;
+        if (parseRes.accepted == true) {
+            const userId = parseRes.user;
             const inviteData = await get(collectionEnum.Invite, inviteId);
             if (inviteData == null) {
                 res.status(404).send('Invite not found');
