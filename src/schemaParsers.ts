@@ -6,7 +6,7 @@ import type {
 } from '../Grouptivate-API/containers/Request';
 import type { Request, Response } from 'express';
 
-function convertObj(inputobj: WithId<Document>) {
+export function convertObj(inputobj: WithId<Document>) {
     let obj: Record<any, any> = inputobj;
     obj.uuid = inputobj['_id'].toString();
 
@@ -27,8 +27,6 @@ export function parseInput(
     if (Object.keys(inputSchema.searchParams).length > 0) {
         const paramSchema = inputSchema.searchParams;
         for (const [key, value] of Object.entries(paramSchema)) {
-            // console.log("Param:")
-            // console.log({[key] :req.query[key]})
             const parse = safeParse(value, req.query[key]);
             parseRes.push(parse.success);
             if (!parse.success) {
@@ -68,8 +66,9 @@ export function parseOutput(
     res: Response,
 ) {
     if (schema.responseBody) {
-        if ('_id' in data) data = convertObj(data);
-        if (Array.isArray(data)) {
+        if ('_id' in data) {
+            data = convertObj(data);
+        } else if (Array.isArray(data)) {
             for (const index in data) {
                 data[index] = convertObj(data[index]);
             }
