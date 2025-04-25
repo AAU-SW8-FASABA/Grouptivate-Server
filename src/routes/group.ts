@@ -5,8 +5,7 @@ import {
 } from '../../Grouptivate-API/schemas/Group';
 
 import GroupModel from '../models/GroupModel';
-import GroupGoalModel from '../models/GroupGoalModel';
-import IndividualGoalModel from '../models/IndividualGoalModel';
+import GoalModel from '../models/GoalModel';
 import UserModel from '../models/UserModel';
 
 import MG from 'mongoose';
@@ -17,7 +16,7 @@ import { router as inviteRouter } from './group/invite';
 import { router as goalRouter } from './group/goal';
 
 import { getParsedSearchParams } from '../helpers/searchParamHelpers';
-import { getUsernamesFromIds } from '../helpers/userHelpers';
+import { getNamesByIds, getUserIdByName } from '../helpers/userHelpers';
 
 export const router = express.Router();
 
@@ -81,9 +80,7 @@ router.get('/', async (req: Request, res: Response) => {
         return;
     }
 
-    const group = await GroupModel.findOne({
-        _id: new MG.Types.ObjectId(parsedParams.uuid.output),
-    });
+    const group = await GroupModel.findById(parsedParams.uuid.output);
 
     // Error if group does not exist
     if (!group) {
@@ -103,14 +100,11 @@ router.get('/', async (req: Request, res: Response) => {
 
     // Fetch goals
     const goalObjectIDs = group.goalIds.map((v) => new MG.Types.ObjectId(v));
-    const groupGoals = await GroupGoalModel.find({
-        _id: { $in: goalObjectIDs },
-    });
-    const individualGoals = await IndividualGoalModel.find({
+    const goals = await GoalModel.find({
         _id: { $in: goalObjectIDs },
     });
 
-    const userNames = await getUsernamesFromIds(group.userIds);
+    const userNames = await getNamesByIds(group.userIds);
     if (!userNames) {
         const error = 'User does not exist';
         console.log(`'GET' @ '/group': ${error}`);
@@ -123,24 +117,14 @@ router.get('/', async (req: Request, res: Response) => {
         users: userNames,
         interval: group.interval,
         goals: [
-            ...groupGoals.map((elem) => {
+            ...goals.map((elem) => {
                 return {
                     uuid: elem._id,
                     title: elem.title,
+                    type: elem.type,
                     activity: elem.activity,
                     metric: elem.metric,
                     target: elem.target,
-                    progress: elem.progress,
-                };
-            }),
-            ...individualGoals.map((elem) => {
-                return {
-                    uuid: elem._id,
-                    title: elem.title,
-                    activity: elem.activity,
-                    metric: elem.metric,
-                    target: elem.target,
-                    user: elem.userId,
                     progress: elem.progress,
                 };
             }),
@@ -169,7 +153,7 @@ router.post('/remove', async (req: Request, res: Response) => {
     if (!parsedBody.success) {
         const error = 'Unable to parse the request body';
         console.log(`'post' @ '/group/remove': ${error}`);
-        res.status(500).json({ error });
+        res.status(404).json({ error });
         return;
     }
 
@@ -197,13 +181,41 @@ router.post('/remove', async (req: Request, res: Response) => {
         { $pull: { groupIds: parsedBody.output.group } },
     );
 
-    if (group?.userIds.length === 0) {
+    // Delete group if it is empty else update progress
+    if (group.userIds.length - 1 === 0) {
         const objectIDs = group.goalIds.map((v) => new MG.Types.ObjectId(v));
         await Promise.all([
-            GroupGoalModel.deleteMany({ _id: { $in: objectIDs } }),
-            IndividualGoalModel.deleteMany({ _id: { $in: objectIDs } }),
+            GoalModel.deleteMany({ _id: { $in: objectIDs } }),
             GroupModel.findByIdAndDelete(group._id),
         ]);
+    } else {
+        const goals = await GoalModel.find({
+            _id: {
+                $in: group.goalIds.map((str) => {
+                    return new MG.Types.ObjectId(str);
+                }),
+            },
+        });
+
+        let promises = goals.map(async (goal) => {
+            if (goal.type === 'individual') {
+                // Remove goal from group
+                await GroupModel.updateOne(
+                    { _id: group._id },
+                    {
+                        $pull: { goalIds: goal._id },
+                    },
+                );
+            } else {
+                // Remove progress from group goal
+                const userId = await getUserIdByName(parsedBody.output.user);
+                if (!userId) return;
+                goal.progress.delete(userId);
+                return await goal.save();
+            }
+        });
+
+        await Promise.all(promises);
     }
 
     res.sendStatus(200);

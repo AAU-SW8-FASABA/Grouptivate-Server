@@ -18,12 +18,8 @@ import * as v from 'valibot';
 
 export const router = express.Router();
 
-function setCookie(res: Response, token: string) {
-    res.cookie('Authorization', token, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'strict',
-    });
+async function isTokenUnique(token: string) {
+    return (await SessionModel.findOne({ token })) === null;
 }
 
 router.post('/', async (req: Request, res: Response) => {
@@ -60,14 +56,26 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     // Create token
-    const token = crypto.randomBytes(32).toString('hex');
+    // TODO: Check if token exists
+    let token: string;
+    do {
+        token = crypto.randomBytes(32).toString('hex');
+    } while (await isTokenUnique(token));
+
     await SessionModel.insertOne({ token, userId: insertResult.upsertedId });
 
-    // Set Authorization cookie
-    setCookie(res, token);
+    const parsedResponse = v.safeParse(UserCreateRequestSchema.responseBody, {
+        token,
+    });
 
-    // Send response
-    res.sendStatus(200);
+    if (!parsedResponse.success) {
+        const error = `Failed to parse response body at 'POST' for '/user'`;
+        console.log(error + ': ', parsedResponse.issues);
+        res.status(500).json({ error });
+        return;
+    }
+
+    res.status(200).json(parsedResponse.output);
 });
 
 //Get user information.
@@ -127,7 +135,10 @@ router.post('/login', async (req: Request, res: Response) => {
         return;
     }
 
-    const token = crypto.randomBytes(32).toString('hex');
+    let token: string;
+    do {
+        token = crypto.randomBytes(32).toString('hex');
+    } while (await isTokenUnique(token));
 
     // Create or overwrite session token
     await SessionModel.updateOne(
@@ -136,9 +147,16 @@ router.post('/login', async (req: Request, res: Response) => {
         { upsert: true },
     );
 
-    // Set Authorization cookie
-    setCookie(res, token);
+    const parsedResponse = v.safeParse(LoginRequestSchema.responseBody, {
+        token,
+    });
 
-    // Send response
-    res.sendStatus(200);
+    if (!parsedResponse.success) {
+        const error = `Failed to parse response body at 'POST' for '/login'`;
+        console.log(error + ': ', parsedResponse.issues);
+        res.status(500).json({ error });
+        return;
+    }
+
+    res.status(200).json(parsedResponse.output);
 });
