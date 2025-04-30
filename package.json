@@ -8,14 +8,16 @@
     "author": "",
     "license": "MIT",
     "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1",
+        "test": "tsx --test test/*.test.ts",
         "prod": "dotenvx run -- npx tsx index.ts",
         "dev": "dotenvx run -- npx tsx index.ts",
         "format": "prettier --ignore-path .gitignore --write \"./\""
     },
     "devDependencies": {
+        "@types/cors": "^2.8.17",
         "@types/express": "^5.0.1",
         "@types/node": "^22.14.0",
+        "mongodb-memory-server": "^10.1.4",
         "prettier": "^3.5.3",
         "tsx": "^4.19.3",
         "typescript": "^5.8.3"
@@ -23,6 +25,7 @@
     "dependencies": {
         "@dotenvx/dotenvx": "^1.39.1",
         "argon2": "^0.43.0",
+        "cors": "^2.8.5",
         "express": "^5.1.0",
         "mongodb": "6.15",
         "mongoose": "^8.13.2",
