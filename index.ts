@@ -19,33 +19,21 @@ try {
 }
 console.log('Connected to MongoDB');
 
-// GoalModel.insertOne({
-//     title: 'test',
-//     activity: 'test',
-//     metric: 'test',
-//     target: 1,
-//     progress: [],
-// });
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-// GoalModel.find({ title: 'test' }).then((res) => {
-//     console.log(res[0].progress);
-// });
+app.use(express.json());
+app.use(authMiddleware);
 
-// const app = express();
-// const PORT = process.env.PORT || 3000;
+app.get('/', (req: Request, res: Response) => {
+    res.send('Hello to the one and only grouptivate');
+});
+app.use('/user', userRouter);
+app.use('/group', groupRouter);
 
-// app.use(express.json());
-// app.use(authMiddleware);
-
-// app.get('/', (req: Request, res: Response) => {
-//     res.send('Hello to the one and only grouptivate');
-// });
-// app.use('/user', userRoutes);
-// app.use('/group', groupRoutes);
-
-// app.listen(PORT, () => {
-//     console.log(`Server is running on port ${PORT}`);
-// });
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
 
 process.on('SIGINT', async () => {
     await MG.connection.close();

@@ -4,8 +4,7 @@ import mg from 'mongoose';
 import { optional } from 'valibot';
 
 export enum CollectionEnum {
-    GroupGoal = 'GroupGoal',
-    IndividualGoal = 'IndividualGoal',
+    Goal = 'Goal',
     Group = 'Group',
     User = 'User',
     Invite = 'Invite',
@@ -31,8 +30,7 @@ export async function get(_collection: CollectionEnum, id: string) {
         const uuid = new ObjectId(id);
         const collection = db.collection(_collection);
         switch (_collection) {
-            case CollectionEnum.GroupGoal:
-            case CollectionEnum.IndividualGoal:
+            case CollectionEnum.Goal:
                 console.log('Not implemented');
                 return;
             case CollectionEnum.Group:

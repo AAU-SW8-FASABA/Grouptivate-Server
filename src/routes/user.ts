@@ -19,7 +19,7 @@ import * as v from 'valibot';
 export const router = express.Router();
 
 async function isTokenUnique(token: string) {
-    return (await SessionModel.findOne({ token })) === null;
+    return (await SessionModel.findOne({ token })) == null;
 }
 
 router.post('/', async (req: Request, res: Response) => {
@@ -56,11 +56,10 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     // Create token
-    // TODO: Check if token exists
     let token: string;
     do {
         token = crypto.randomBytes(32).toString('hex');
-    } while (await isTokenUnique(token));
+    } while (!(await isTokenUnique(token)));
 
     await SessionModel.insertOne({ token, userId: insertResult.upsertedId });
 
@@ -78,7 +77,8 @@ router.post('/', async (req: Request, res: Response) => {
     res.status(200).json(parsedResponse.output);
 });
 
-//Get user information.
+// Get user information.
+// TODO: Should contain Goals for front screen
 router.get('/', async (req: Request, res: Response) => {
     const user = await UserModel.findById(req.userId);
 
@@ -106,7 +106,6 @@ router.get('/', async (req: Request, res: Response) => {
     // Send response
     res.status(200).json(parsedResponse.output);
 });
-
 // The session token has already been verified by the middleware
 router.get('/verify', async (req: Request, res: Response) => {
     res.sendStatus(200);
@@ -138,7 +137,7 @@ router.post('/login', async (req: Request, res: Response) => {
     let token: string;
     do {
         token = crypto.randomBytes(32).toString('hex');
-    } while (await isTokenUnique(token));
+    } while (!(await isTokenUnique(token)));
 
     // Create or overwrite session token
     await SessionModel.updateOne(

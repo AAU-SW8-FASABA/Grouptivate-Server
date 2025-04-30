@@ -1,5 +1,6 @@
 import MG from 'mongoose';
 import { CollectionEnum } from '../db';
+import type { Interval } from '../../Grouptivate-API/schemas/Interval';
 
 const GroupSchema = new MG.Schema({
     name: {
@@ -26,5 +27,5 @@ const GroupSchema = new MG.Schema({
     },
 });
 
-const GroupModel = MG.model(CollectionEnum.GroupGoal, GroupSchema);
+const GroupModel = MG.model(CollectionEnum.Group, GroupSchema);
 export default GroupModel;

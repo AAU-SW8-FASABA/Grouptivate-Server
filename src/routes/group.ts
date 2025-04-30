@@ -16,7 +16,8 @@ import { router as inviteRouter } from './group/invite';
 import { router as goalRouter } from './group/goal';
 
 import { getParsedSearchParams } from '../helpers/searchParamHelpers';
-import { getNamesByIds, getUserIdByName } from '../helpers/userHelpers';
+import { getUserMap, getUserIdByName } from '../helpers/userHelpers';
+import { GoalType } from '../../Grouptivate-API/schemas/Goal';
 
 export const router = express.Router();
 
@@ -38,7 +39,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     // Inserts a group
     const group = await GroupModel.insertOne({
-        name: parsedBody.output.name,
+        name: parsedBody.output.groupName,
         interval: parsedBody.output.interval,
         userIds: [req.userId],
         goalIds: [],
@@ -53,12 +54,12 @@ router.post('/', async (req: Request, res: Response) => {
 
     // Create response object
     const parsedResponse = v.safeParse(GroupCreateRequestSchema.responseBody, {
-        uuid: group._id,
+        groupId: group.id,
     });
 
     if (!parsedResponse.success) {
         const error = 'Unable to parse response body';
-        console.log(`'post' @ '/group': ${error}`);
+        console.log(`'post' @ '/group': ${error} - `, parsedResponse.issues);
         res.status(500).json({ error });
         return;
     }
@@ -73,14 +74,14 @@ router.get('/', async (req: Request, res: Response) => {
         req,
     );
 
-    if (!parsedParams.uuid.success) {
-        const error = 'Request did not include a valid uuid';
+    if (!parsedParams.groupId.success) {
+        const error = 'Request did not include a valid groupId';
         console.log(`'GET' @ '/group': ${error}`);
         res.status(404).json({ error });
         return;
     }
 
-    const group = await GroupModel.findById(parsedParams.uuid.output);
+    const group = await GroupModel.findById(parsedParams.groupId.output);
 
     // Error if group does not exist
     if (!group) {
@@ -104,28 +105,31 @@ router.get('/', async (req: Request, res: Response) => {
         _id: { $in: goalObjectIDs },
     });
 
-    const userNames = await getNamesByIds(group.userIds);
-    if (!userNames) {
-        const error = 'User does not exist';
+    console.log(goals);
+
+    const userMap = await getUserMap(group.userIds);
+    if (userMap.size === 0) {
+        const error = 'User IDs do not exist in this group';
         console.log(`'GET' @ '/group': ${error}`);
         res.status(500).json({ error });
+        return;
     }
 
     // Create Response object
     const parsedResponse = v.safeParse(GroupGetRequestSchema.responseBody, {
-        name: group.name,
-        users: userNames,
+        groupName: group.name,
+        users: Object.fromEntries(userMap),
         interval: group.interval,
         goals: [
             ...goals.map((elem) => {
                 return {
-                    uuid: elem._id,
+                    goalId: elem.id,
                     title: elem.title,
                     type: elem.type,
                     activity: elem.activity,
                     metric: elem.metric,
                     target: elem.target,
-                    progress: elem.progress,
+                    progress: Object.fromEntries(elem.progress),
                 };
             }),
         ],
@@ -134,7 +138,7 @@ router.get('/', async (req: Request, res: Response) => {
 
     if (!parsedResponse.success) {
         const error = 'Unable to parse response';
-        console.log(`'GET' @ '/group': ${error} - ${parsedResponse.issues}`);
+        console.log(`'GET' @ '/group': ${error} - `, parsedResponse.issues);
         res.status(500).json({ error });
         return;
     }
@@ -157,14 +161,16 @@ router.post('/remove', async (req: Request, res: Response) => {
         return;
     }
 
-    const group = await GroupModel.findOne({
-        _id: new MG.Types.ObjectId(parsedBody.output.group),
-        userIds: {
-            $in: [parsedBody.output.user],
-        },
-    });
+    const group = await GroupModel.findById(parsedBody.output.groupId);
 
     if (!group) {
+        const error = 'Group does not exist';
+        console.log(`'post' @ '/group/remove': ${error}`);
+        res.status(400).json({ error });
+        return;
+    }
+
+    if (!group.userIds.includes(req.userId)) {
         const error = 'Requesting user is not a member of this group';
         console.log(`'post' @ '/group/remove': ${error}`);
         res.status(500).json({ error });
@@ -172,46 +178,41 @@ router.post('/remove', async (req: Request, res: Response) => {
     }
 
     await GroupModel.updateOne(
-        { _id: new MG.Types.ObjectId(parsedBody.output.group) },
-        { $pull: { userIds: parsedBody.output.user } },
+        { _id: new MG.Types.ObjectId(parsedBody.output.groupId) },
+        { $pull: { userIds: parsedBody.output.userId } },
     );
 
     await UserModel.updateOne(
-        { _id: new MG.Types.ObjectId(parsedBody.output.user) },
-        { $pull: { groupIds: parsedBody.output.group } },
+        { _id: new MG.Types.ObjectId(parsedBody.output.userId) },
+        { $pull: { groupIds: parsedBody.output.groupId } },
     );
 
     // Delete group if it is empty else update progress
+    const goalObjectIDs = group.goalIds.map((id) => new MG.Types.ObjectId(id));
     if (group.userIds.length - 1 === 0) {
-        const objectIDs = group.goalIds.map((v) => new MG.Types.ObjectId(v));
         await Promise.all([
-            GoalModel.deleteMany({ _id: { $in: objectIDs } }),
+            GoalModel.deleteMany({ _id: { $in: goalObjectIDs } }),
             GroupModel.findByIdAndDelete(group._id),
         ]);
     } else {
         const goals = await GoalModel.find({
             _id: {
-                $in: group.goalIds.map((str) => {
-                    return new MG.Types.ObjectId(str);
-                }),
+                $in: goalObjectIDs,
             },
         });
 
         let promises = goals.map(async (goal) => {
-            if (goal.type === 'individual') {
+            if (goal.type === GoalType.Individual) {
                 // Remove goal from group
-                await GroupModel.updateOne(
-                    { _id: group._id },
-                    {
-                        $pull: { goalIds: goal._id },
-                    },
-                );
+                await GroupModel.findByIdAndUpdate(group._id, {
+                    $pull: { goalIds: goal._id },
+                });
+                await GoalModel.findByIdAndDelete(group._id);
             } else {
                 // Remove progress from group goal
-                const userId = await getUserIdByName(parsedBody.output.user);
-                if (!userId) return;
-                goal.progress.delete(userId);
-                return await goal.save();
+                GoalModel.findByIdAndUpdate(goal._id, {
+                    $unset: { [`progress.${parsedBody.output.userId}`]: '' },
+                });
             }
         });
 

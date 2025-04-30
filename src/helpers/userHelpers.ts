@@ -5,7 +5,7 @@ export async function getUserIdByName(
     name: string,
 ): Promise<string | undefined> {
     const user = await UserModel.findOne({ name });
-    return user?._id.toString();
+    return user?.id;
 }
 
 export async function getNameById(id: string): Promise<string | undefined> {
@@ -13,16 +13,8 @@ export async function getNameById(id: string): Promise<string | undefined> {
     return user?.name;
 }
 
-export async function getNamesByIds(
-    ids: string[],
-): Promise<string[] | undefined> {
-    const userNames = await Promise.all(ids.map((id) => getNameById(id)));
+export async function getUserMap(ids: string[]): Promise<Map<string, string>> {
+    const users = await UserModel.find({ _id: { $in: ids } });
 
-    // Filter out any undefined usernames
-    if (userNames.some((name) => name === undefined)) {
-        return undefined;
-    }
-
-    // If all usernames are undefined, return undefined; otherwise, return the filtered array
-    return userNames as string[];
+    return new Map(users.map((user) => [user.id, user.name]));
 }

@@ -1,10 +1,11 @@
 import MG from 'mongoose';
 import { CollectionEnum } from '../db';
+import { GoalType } from '../../Grouptivate-API/schemas/Goal';
 
 const GoalSchema = new MG.Schema({
     type: {
         type: String,
-        enum: ['group', 'individual'],
+        enum: GoalType,
         required: true,
     },
     title: {
@@ -30,5 +31,5 @@ const GoalSchema = new MG.Schema({
     },
 });
 
-const GoalModel = MG.model(CollectionEnum.GroupGoal, GoalSchema);
+const GoalModel = MG.model(CollectionEnum.Goal, GoalSchema);
 export default GoalModel;

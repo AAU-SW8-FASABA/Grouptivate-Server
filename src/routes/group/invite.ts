@@ -17,7 +17,7 @@ import {
 import { GoalType } from '../../../Grouptivate-API/schemas/Goal';
 import InviteModel from '../../models/InviteModel';
 import GroupModel from '../../models/GroupModel';
-import { getNameById } from '../../helpers/userHelpers';
+import { getNameById, getUserIdByName } from '../../helpers/userHelpers';
 import { getParsedSearchParams } from '../../helpers/searchParamHelpers';
 import MG from 'mongoose';
 import UserModel from '../../models/UserModel';
@@ -40,12 +40,12 @@ router.post('/', async (req: Request, res: Response) => {
         return;
     }
 
-    const group = await GroupModel.findById(parsedBody.output.group);
+    const group = await GroupModel.findById(parsedBody.output.groupId);
 
     // Error if group does not exist
     if (!group) {
         const error = 'Invalid group';
-        console.log(`'GET' @ '/group/invite': ${error}`);
+        console.log(`'post' @ '/group/invite': ${error}`);
         res.status(404).json({ error });
         return;
     }
@@ -53,14 +53,23 @@ router.post('/', async (req: Request, res: Response) => {
     // Error if user is not in group
     if (!group.userIds.includes(req.userId)) {
         const error = 'User is not a member of the group';
-        console.log(`'GET' @ '/group/invite': ${error}`);
+        console.log(`'post' @ '/group/invite': ${error}`);
+        res.status(401).json({ error });
+        return;
+    }
+
+    const inviteeId = getUserIdByName(parsedBody.output.inviteeName);
+
+    if (!inviteeId) {
+        const error = 'This username does not exist';
+        console.log(`'post' @ '/group/invite': ${error}`);
         res.status(401).json({ error });
         return;
     }
 
     await InviteModel.insertOne({
-        groupId: parsedBody.output.group,
-        inviteeId: parsedBody.output.invited,
+        groupId: parsedBody.output.groupId,
+        inviteeId: inviteeId,
         inviterId: req.userId,
     });
 
