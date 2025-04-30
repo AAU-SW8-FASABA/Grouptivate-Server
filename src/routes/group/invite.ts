@@ -2,6 +2,7 @@ import express, { type Request, type Response } from 'express';
 import * as v from 'valibot';
 import {
     InviteCreateRequestSchema,
+    InviteDeleteRequestSchema,
     InviteGetRequestSchema,
     InviteRespondRequestSchema,
 } from '../../../Grouptivate-API/schemas/Invite';
@@ -56,7 +57,7 @@ router.post('/', async (req: Request, res: Response) => {
     const inviteeId = await getUserIdByName(parsedBody.output.inviteeName);
 
     if (!inviteeId) {
-        const error = 'This username does not exist';
+        const error = 'This user does not exist';
         console.log(`'post' @ '/group/invite': ${error}`);
         res.status(401).json({ error });
         return;
@@ -102,22 +103,53 @@ router.get('/', async (req: Request, res: Response) => {
     res.status(200).json(parsedResponse.output);
 });
 
-//TODO: Why is this no longer needed?
 //Delete a group invitation.
-//No longer needed, old implementation is part of post/group/invite/respond
-/*
-  router.delete("/group/invite", async (req: Request, res: Response) => {
-    const inviteIdResult = safeParse(UuidSchema,req.body.uuid)
-    if(inviteIdResult.success){
-      const inviteuuid = new ObjectId(inviteIdResult.output)
-      const result = await remove(CollectionEnum.Invite, {_id: inviteuuid})
-      res.send(result)
+router.delete('/group/invite', async (req: Request, res: Response) => {
+    const parsedSearchParams = getParsedSearchParams(
+        InviteDeleteRequestSchema.searchParams,
+        req,
+    );
+
+    if (!parsedSearchParams.inviteId.success) {
+        const error = 'Request did not include a valid invite id';
+        console.log(`'GET' @ '/group/invite/respond': ${error}`);
+        res.status(404).json({ error });
+        return;
     }
-    else{
-      res.status(400).send("Failed to parse input")
+
+    const invite = await InviteModel.findById(
+        parsedSearchParams.inviteId.output,
+    );
+
+    if (!invite) {
+        const error = 'Invalid invite';
+        console.log(`'delete' @ '/group/invite': ${error}`);
+        res.status(404).json({ error });
+        return;
     }
-  });
-  */
+
+    const group = await GroupModel.findById(invite.groupId);
+
+    // Error if group does not exist
+    if (!group) {
+        const error = 'Invalid group';
+        console.log(`'delete' @ '/group/invite': ${error}`);
+        res.status(404).json({ error });
+        return;
+    }
+
+    // Error if user is not in group
+    if (!group.userIds.includes(req.userId)) {
+        const error = 'User is not a member of the group';
+        console.log(`'delete' @ '/group/invite': ${error}`);
+        res.status(401).json({ error });
+        return;
+    }
+
+    await InviteModel.findByIdAndDelete(invite.id);
+
+    res.sendStatus(200);
+});
 
 //group/invite/respond ---------------
 //Respond to invite.
@@ -127,7 +159,7 @@ router.post('/respond', async (req: Request, res: Response) => {
         req,
     );
 
-    if (!parsedParams.invite.success) {
+    if (!parsedParams.inviteId.success) {
         const error = 'Request did not include an invite id';
         console.log(`'GET' @ '/group/invite/respond': ${error}`);
         res.status(404).json({ error });
@@ -146,7 +178,7 @@ router.post('/respond', async (req: Request, res: Response) => {
         return;
     }
 
-    const invite = await InviteModel.findById(parsedParams.invite.output);
+    const invite = await InviteModel.findById(parsedParams.inviteId.output);
 
     if (!invite) {
         const error = 'Invite does not exist';
@@ -196,7 +228,7 @@ router.post('/respond', async (req: Request, res: Response) => {
         }
     }
 
-    await InviteModel.findByIdAndDelete(parsedParams.invite.output);
+    await InviteModel.findByIdAndDelete(parsedParams.inviteId.output);
 
     // const inviteResponse = parseInput(InviteRespondRequestSchema, req, res);
     // if (inviteResponse.success) {
