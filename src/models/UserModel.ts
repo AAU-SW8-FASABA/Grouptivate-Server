@@ -1,5 +1,5 @@
 import MG from "mongoose";
-import { CollectionEnum } from "../dbCollections";
+import { CollectionEnum } from "../dbEnums";
 
 const UserSchema = new MG.Schema({
 	name: {

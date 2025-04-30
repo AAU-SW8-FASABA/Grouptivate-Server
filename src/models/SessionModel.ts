@@ -1,5 +1,5 @@
 import MG from "mongoose";
-import { CollectionEnum } from "../dbCollections";
+import { CollectionEnum } from "../dbEnums";
 
 const SessionSchema = new MG.Schema({
 	token: {

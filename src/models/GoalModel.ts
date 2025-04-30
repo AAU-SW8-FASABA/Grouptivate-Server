@@ -1,5 +1,5 @@
 import MG from "mongoose";
-import { CollectionEnum } from "../dbCollections";
+import { CollectionEnum } from "../dbEnums";
 import { GoalType } from "../../Grouptivate-API/schemas/Goal";
 
 const GoalSchema = new MG.Schema({

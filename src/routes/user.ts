@@ -102,6 +102,7 @@ router.get("/", async (req: Request, res: Response) => {
 
 	// Parse response body
 	const parsedResponse = v.safeParse(UserGetRequestSchema.responseBody, {
+		userId: user.id,
 		name: user.name,
 		groups: user.groupIds,
 		goals: goals.map((goal) => {

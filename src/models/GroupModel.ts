@@ -1,5 +1,5 @@
 import MG from "mongoose";
-import { CollectionEnum } from "../dbCollections";
+import { CollectionEnum } from "../dbEnums";
 import type { Interval } from "../../Grouptivate-API/schemas/Interval";
 
 const GroupSchema = new MG.Schema({
