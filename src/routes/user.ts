@@ -6,7 +6,9 @@ import {
 import { LoginRequestSchema } from '../../Grouptivate-API/schemas/Login';
 
 // DB imports
+import { GoalType } from '../../Grouptivate-API/schemas/Goal';
 import UserModel from '../models/UserModel';
+import GoalModel from '../models/GoalModel';
 import SessionModel from '../models/SessionModel';
 
 // Other imports
@@ -89,6 +91,12 @@ router.get('/', async (req: Request, res: Response) => {
         res.status(404).json({ error });
         return;
     }
+
+    // TODO, change types and add this to response
+    const goals = await GoalModel.find({
+        type: GoalType.Individual,
+        [`progress.${req.userId}`]: { $exists: true },
+    });
 
     // Parse response body
     const parsedResponse = v.safeParse(UserGetRequestSchema.responseBody, {

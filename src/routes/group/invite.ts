@@ -1,14 +1,5 @@
 import express, { type Request, type Response } from 'express';
 import * as v from 'valibot';
-import { parseInput, parseOutput } from '../../schemaParsers';
-import {
-    insert,
-    CollectionEnum,
-    update,
-    getFilter,
-    remove,
-    get,
-} from '../../db';
 import {
     InviteCreateRequestSchema,
     InviteGetRequestSchema,
@@ -17,9 +8,12 @@ import {
 import { GoalType } from '../../../Grouptivate-API/schemas/Goal';
 import InviteModel from '../../models/InviteModel';
 import GroupModel from '../../models/GroupModel';
-import { getNameById, getUserIdByName } from '../../helpers/userHelpers';
+import {
+    getGroupNameById,
+    getNameById,
+    getUserIdByName,
+} from '../../helpers/userHelpers';
 import { getParsedSearchParams } from '../../helpers/searchParamHelpers';
-import MG from 'mongoose';
 import UserModel from '../../models/UserModel';
 import GoalModel from '../../models/GoalModel';
 
@@ -27,6 +21,7 @@ export const router = express.Router();
 
 //Group/invite ------------------
 //Create a group invitation.
+// TODO: Only one invite
 router.post('/', async (req: Request, res: Response) => {
     const parsedBody = v.safeParse(
         InviteCreateRequestSchema.requestBody,
@@ -58,7 +53,7 @@ router.post('/', async (req: Request, res: Response) => {
         return;
     }
 
-    const inviteeId = getUserIdByName(parsedBody.output.inviteeName);
+    const inviteeId = await getUserIdByName(parsedBody.output.inviteeName);
 
     if (!inviteeId) {
         const error = 'This username does not exist';
@@ -82,11 +77,10 @@ router.get('/', async (req: Request, res: Response) => {
 
     const response = await Promise.all(
         invites.map(async (invite) => {
-            const inviterName = await getNameById(invite.inviterId);
             return {
-                uuid: invite._id,
-                group: invite.groupId,
-                inviter: inviterName,
+                inviteId: invite.id,
+                groupName: await getGroupNameById(invite.groupId),
+                inviterName: await getNameById(invite.inviterId),
             };
         }),
     );
@@ -108,6 +102,7 @@ router.get('/', async (req: Request, res: Response) => {
     res.status(200).json(parsedResponse.output);
 });
 
+//TODO: Why is this no longer needed?
 //Delete a group invitation.
 //No longer needed, old implementation is part of post/group/invite/respond
 /*

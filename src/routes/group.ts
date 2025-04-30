@@ -105,8 +105,6 @@ router.get('/', async (req: Request, res: Response) => {
         _id: { $in: goalObjectIDs },
     });
 
-    console.log(goals);
-
     const userMap = await getUserMap(group.userIds);
     if (userMap.size === 0) {
         const error = 'User IDs do not exist in this group';

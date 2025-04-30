@@ -1,5 +1,5 @@
 import UserModel from '../models/UserModel';
-import MG from 'mongoose';
+import GroupModel from '../models/GroupModel';
 
 export async function getUserIdByName(
     name: string,
@@ -9,8 +9,15 @@ export async function getUserIdByName(
 }
 
 export async function getNameById(id: string): Promise<string | undefined> {
-    const user = await UserModel.findOne({ _id: new MG.Types.ObjectId(id) });
+    const user = await UserModel.findById(id);
     return user?.name;
+}
+
+export async function getGroupNameById(
+    id: string,
+): Promise<string | undefined> {
+    const group = await GroupModel.findById(id);
+    return group?.name;
 }
 
 export async function getUserMap(ids: string[]): Promise<Map<string, string>> {
