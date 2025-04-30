@@ -63,11 +63,14 @@ router.post("/", async (req: Request, res: Response) => {
 		token = crypto.randomBytes(32).toString("hex");
 	} while (!(await isTokenUnique(token)));
 
-	await SessionModel.insertOne({ token, userId: insertResult.upsertedId });
+	await SessionModel.insertOne({
+		token,
+		userId: insertResult.upsertedId.toString(),
+	});
 
 	const parsedResponse = v.safeParse(UserCreateRequestSchema.responseBody, {
 		token,
-		userId: insertResult.upsertedId,
+		userId: insertResult.upsertedId.toString(),
 	});
 
 	if (!parsedResponse.success) {
@@ -77,7 +80,7 @@ router.post("/", async (req: Request, res: Response) => {
 		return;
 	}
 
-	res.status(200).json(parsedResponse.output);
+	res.status(201).json(parsedResponse.output);
 });
 
 // Get user information.
