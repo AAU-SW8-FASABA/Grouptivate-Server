@@ -1,169 +1,181 @@
 // API schema imports
 import {
-    UserCreateRequestSchema,
-    UserGetRequestSchema,
-} from '../../Grouptivate-API/schemas/User';
-import { LoginRequestSchema } from '../../Grouptivate-API/schemas/Login';
+	UserCreateRequestSchema,
+	UserGetRequestSchema,
+} from "../../Grouptivate-API/schemas/User";
+import { LoginRequestSchema } from "../../Grouptivate-API/schemas/Login";
 
 // DB imports
-import { GoalType } from '../../Grouptivate-API/schemas/Goal';
-import UserModel from '../models/UserModel';
-import GoalModel from '../models/GoalModel';
-import SessionModel from '../models/SessionModel';
+import { GoalType } from "../../Grouptivate-API/schemas/Goal";
+import UserModel from "../models/UserModel";
+import GoalModel from "../models/GoalModel";
+import SessionModel from "../models/SessionModel";
 
 // Other imports
-import type { Request, Response } from 'express';
-import express from 'express';
-import argon2 from 'argon2';
-import crypto from 'node:crypto';
-import * as v from 'valibot';
+import type { Request, Response } from "express";
+import express from "express";
+import argon2 from "argon2";
+import crypto from "node:crypto";
+import * as v from "valibot";
 
 export const router = express.Router();
 
 async function isTokenUnique(token: string) {
-    return (await SessionModel.findOne({ token })) == null;
+	return (await SessionModel.findOne({ token })) == null;
 }
 
-router.post('/', async (req: Request, res: Response) => {
-    const parsedBody = v.safeParse(
-        UserCreateRequestSchema.requestBody,
-        req.body,
-    );
+router.post("/", async (req: Request, res: Response) => {
+	const parsedBody = v.safeParse(
+		UserCreateRequestSchema.requestBody,
+		req.body,
+	);
 
-    if (!parsedBody.success) {
-        const error = `Failed to parse input for 'post' request to '/user'`;
-        console.log(error + ': ', parsedBody.issues);
-        res.status(400).json({ error });
-        return;
-    }
+	if (!parsedBody.success) {
+		const error = `Failed to parse input for 'post' request to '/user'`;
+		console.log(error + ": ", parsedBody.issues);
+		res.status(400).json({ error });
+		return;
+	}
 
-    // Creates user if there is no existing user with that name
-    const insertResult = await UserModel.updateOne(
-        { name: parsedBody.output.name },
-        {
-            $setOnInsert: {
-                name: parsedBody.output.name,
-                password: await argon2.hash(parsedBody.output.password),
-                groupIds: [],
-                lastSync: new Date(0).toISOString(),
-            },
-        },
-        { upsert: true },
-    );
+	// Creates user if there is no existing user with that name
+	const insertResult = await UserModel.updateOne(
+		{ name: parsedBody.output.name },
+		{
+			$setOnInsert: {
+				name: parsedBody.output.name,
+				password: await argon2.hash(parsedBody.output.password),
+				groupIds: [],
+				lastSync: new Date(0).toISOString(),
+			},
+		},
+		{ upsert: true },
+	);
 
-    // If the insert failed, the user already exists
-    if (!insertResult.upsertedId) {
-        res.status(409).send('User with this name already exists');
-        return;
-    }
+	// If the insert failed, the user already exists
+	if (!insertResult.upsertedId) {
+		res.status(409).send("User with this name already exists");
+		return;
+	}
 
-    // Create token
-    let token: string;
-    do {
-        token = crypto.randomBytes(32).toString('hex');
-    } while (!(await isTokenUnique(token)));
+	// Create token
+	let token: string;
+	do {
+		token = crypto.randomBytes(32).toString("hex");
+	} while (!(await isTokenUnique(token)));
 
-    await SessionModel.insertOne({ token, userId: insertResult.upsertedId });
+	await SessionModel.insertOne({ token, userId: insertResult.upsertedId });
 
-    const parsedResponse = v.safeParse(UserCreateRequestSchema.responseBody, {
-        token,
-    });
+	const parsedResponse = v.safeParse(UserCreateRequestSchema.responseBody, {
+		token,
+		userId: insertResult.upsertedId,
+	});
 
-    if (!parsedResponse.success) {
-        const error = `Failed to parse response body at 'POST' for '/user'`;
-        console.log(error + ': ', parsedResponse.issues);
-        res.status(500).json({ error });
-        return;
-    }
+	if (!parsedResponse.success) {
+		const error = `Failed to parse response body at 'POST' for '/user'`;
+		console.log(error + ": ", parsedResponse.issues);
+		res.status(500).json({ error });
+		return;
+	}
 
-    res.status(200).json(parsedResponse.output);
+	res.status(200).json(parsedResponse.output);
 });
 
 // Get user information.
-// TODO: Should contain Goals for front screen
-router.get('/', async (req: Request, res: Response) => {
-    const user = await UserModel.findById(req.userId);
+router.get("/", async (req: Request, res: Response) => {
+	const user = await UserModel.findById(req.userId);
 
-    // Check if a user was found
-    if (!user) {
-        const error = `User not found`;
-        console.log(error);
-        res.status(404).json({ error });
-        return;
-    }
+	// Check if a user was found
+	if (!user) {
+		const error = `User not found`;
+		console.log(error);
+		res.status(404).json({ error });
+		return;
+	}
 
-    // TODO, change types and add this to response
-    const goals = await GoalModel.find({
-        type: GoalType.Individual,
-        [`progress.${req.userId}`]: { $exists: true },
-    });
+	const goals = await GoalModel.find({
+		type: GoalType.Individual,
+		[`progress.${req.userId}`]: { $exists: true },
+	});
 
-    // Parse response body
-    const parsedResponse = v.safeParse(UserGetRequestSchema.responseBody, {
-        name: user.name,
-        groups: user.groupIds,
-    });
+	// Parse response body
+	const parsedResponse = v.safeParse(UserGetRequestSchema.responseBody, {
+		name: user.name,
+		groups: user.groupIds,
+		goals: goals.map((goal) => {
+			return {
+				goalId: goal.id,
+				type: goal.type,
+				title: goal.title,
+				activity: goal.activity,
+				metric: goal.metric,
+				target: goal.target,
+				progress: Object.fromEntries(goal.progress),
+			};
+		}),
+	});
 
-    if (!parsedResponse.success) {
-        const error = `Failed to parse response body at 'GET' for '/user'`;
-        console.log(error + ': ', parsedResponse.issues);
-        res.status(500).json({ error });
-        return;
-    }
+	if (!parsedResponse.success) {
+		const error = `Failed to parse response body at 'GET' for '/user'`;
+		console.log(error + ": ", parsedResponse.issues);
+		res.status(500).json({ error });
+		return;
+	}
 
-    // Send response
-    res.status(200).json(parsedResponse.output);
+	// Send response
+	res.status(200).json(parsedResponse.output);
 });
+
 // The session token has already been verified by the middleware
-router.get('/verify', async (req: Request, res: Response) => {
-    res.sendStatus(200);
+router.get("/verify", async (req: Request, res: Response) => {
+	res.sendStatus(200);
 });
 
-router.post('/login', async (req: Request, res: Response) => {
-    const parsedRequest = v.safeParse(LoginRequestSchema.requestBody, req.body);
+router.post("/login", async (req: Request, res: Response) => {
+	const parsedRequest = v.safeParse(LoginRequestSchema.requestBody, req.body);
 
-    if (!parsedRequest.success) {
-        const error = `Failed to parse body for 'POST' at '/login'`;
-        console.log(error + ': ', parsedRequest.issues);
-        res.status(404).json({ error });
-        return;
-    }
+	if (!parsedRequest.success) {
+		const error = `Failed to parse body for 'POST' at '/login'`;
+		console.log(error + ": ", parsedRequest.issues);
+		res.status(404).json({ error });
+		return;
+	}
 
-    const user = await UserModel.findOne({ name: parsedRequest.output.name });
+	const user = await UserModel.findOne({ name: parsedRequest.output.name });
 
-    // Check if the user exist and the password is correct
-    if (
-        !user ||
-        !(await argon2.verify(user.password, parsedRequest.output.password))
-    ) {
-        const error = 'Incorrect login information';
-        console.log(`'post' @ '/login': ${error}`);
-        res.status(401).json({ error });
-        return;
-    }
+	// Check if the user exist and the password is correct
+	if (
+		!user ||
+		!(await argon2.verify(user.password, parsedRequest.output.password))
+	) {
+		const error = "Incorrect login information";
+		console.log(`'POST' @ '/login': ${error}`);
+		res.status(401).json({ error });
+		return;
+	}
 
-    let token: string;
-    do {
-        token = crypto.randomBytes(32).toString('hex');
-    } while (!(await isTokenUnique(token)));
+	let token: string;
+	do {
+		token = crypto.randomBytes(32).toString("hex");
+	} while (!(await isTokenUnique(token)));
 
-    // Create or overwrite session token
-    await SessionModel.updateOne(
-        { userId: user._id },
-        { $set: { token } },
-        { upsert: true },
-    );
+	// Create or overwrite session token
+	await SessionModel.updateOne(
+		{ userId: user._id },
+		{ $set: { token } },
+		{ upsert: true },
+	);
 
-    const parsedResponse = v.safeParse(LoginRequestSchema.responseBody, {
-        token,
-    });
+	const parsedResponse = v.safeParse(LoginRequestSchema.responseBody, {
+		token,
+		userId: user.id,
+	});
 
-    if (!parsedResponse.success) {
-        const error = `Failed to parse response body at 'POST' for '/login'`;
-        console.log(error + ': ', parsedResponse.issues);
-        res.status(500).json({ error });
-        return;
-    }
+	if (!parsedResponse.success) {
+		const error = `Failed to parse response body at 'POST' for '/login'`;
+		console.log(error + ": ", parsedResponse.issues);
+		res.status(500).json({ error });
+		return;
+	}
 
-    res.status(200).json(parsedResponse.output);
+	res.status(200).json(parsedResponse.output);
 });

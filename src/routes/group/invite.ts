@@ -1,256 +1,268 @@
-import express, { type Request, type Response } from 'express';
-import * as v from 'valibot';
+import express, { type Request, type Response } from "express";
+import * as v from "valibot";
 import {
-    InviteCreateRequestSchema,
-    InviteDeleteRequestSchema,
-    InviteGetRequestSchema,
-    InviteRespondRequestSchema,
-} from '../../../Grouptivate-API/schemas/Invite';
-import { GoalType } from '../../../Grouptivate-API/schemas/Goal';
-import InviteModel from '../../models/InviteModel';
-import GroupModel from '../../models/GroupModel';
+	InviteCreateRequestSchema,
+	InviteDeleteRequestSchema,
+	InviteGetRequestSchema,
+	InviteRespondRequestSchema,
+} from "../../../Grouptivate-API/schemas/Invite";
+import { GoalType } from "../../../Grouptivate-API/schemas/Goal";
+import InviteModel from "../../models/InviteModel";
+import GroupModel from "../../models/GroupModel";
 import {
-    getGroupNameById,
-    getNameById,
-    getUserIdByName,
-} from '../../helpers/userHelpers';
-import { getParsedSearchParams } from '../../helpers/searchParamHelpers';
-import UserModel from '../../models/UserModel';
-import GoalModel from '../../models/GoalModel';
+	getGroupNameById,
+	getNameById,
+	getUserIdByName,
+} from "../../helpers/userHelpers";
+import { getParsedSearchParams } from "../../helpers/searchParamHelpers";
+import UserModel from "../../models/UserModel";
+import GoalModel from "../../models/GoalModel";
 
 export const router = express.Router();
 
 //Group/invite ------------------
 //Create a group invitation.
-// TODO: Only one invite
-router.post('/', async (req: Request, res: Response) => {
-    const parsedBody = v.safeParse(
-        InviteCreateRequestSchema.requestBody,
-        req.body,
-    );
+router.post("/", async (req: Request, res: Response) => {
+	const parsedBody = v.safeParse(
+		InviteCreateRequestSchema.requestBody,
+		req.body,
+	);
 
-    if (!parsedBody.success) {
-        const error = 'Unable to parse the request body';
-        console.log(`'post' @ '/group/invite': ${error}`);
-        res.status(404).json({ error });
-        return;
-    }
+	if (!parsedBody.success) {
+		const error = "Unable to parse the request body";
+		console.log(`'POST' @ '/group/invite': ${error}`);
+		res.status(404).json({ error });
+		return;
+	}
 
-    const group = await GroupModel.findById(parsedBody.output.groupId);
+	const group = await GroupModel.findById(parsedBody.output.groupId);
 
-    // Error if group does not exist
-    if (!group) {
-        const error = 'Invalid group';
-        console.log(`'post' @ '/group/invite': ${error}`);
-        res.status(404).json({ error });
-        return;
-    }
+	// Error if group does not exist
+	if (!group) {
+		const error = "Invalid group";
+		console.log(`'POST' @ '/group/invite': ${error}`);
+		res.status(404).json({ error });
+		return;
+	}
 
-    // Error if user is not in group
-    if (!group.userIds.includes(req.userId)) {
-        const error = 'User is not a member of the group';
-        console.log(`'post' @ '/group/invite': ${error}`);
-        res.status(401).json({ error });
-        return;
-    }
+	// Error if user is not in group
+	if (!group.userIds.includes(req.userId)) {
+		const error = "User is not a member of the group";
+		console.log(`'POST' @ '/group/invite': ${error}`);
+		res.status(401).json({ error });
+		return;
+	}
 
-    const inviteeId = await getUserIdByName(parsedBody.output.inviteeName);
+	const inviteeId = await getUserIdByName(parsedBody.output.inviteeName);
 
-    if (!inviteeId) {
-        const error = 'This user does not exist';
-        console.log(`'post' @ '/group/invite': ${error}`);
-        res.status(401).json({ error });
-        return;
-    }
+	if (!inviteeId) {
+		const error = "This user does not exist";
+		console.log(`'POST' @ '/group/invite': ${error}`);
+		res.status(401).json({ error });
+		return;
+	}
 
-    await InviteModel.insertOne({
-        groupId: parsedBody.output.groupId,
-        inviteeId: inviteeId,
-        inviterId: req.userId,
-    });
+	const invite = await InviteModel.findOne({
+		groupId: group.id,
+		inviteeId,
+	});
 
-    res.sendStatus(200);
+	if (invite) {
+		const error = "This user is already invited to this group";
+		console.log(`'POST' @ '/group/invite': ${error}`);
+		res.status(403).json({ error });
+		return;
+	}
+
+	await InviteModel.insertOne({
+		groupId: parsedBody.output.groupId,
+		inviteeId: inviteeId,
+		inviterId: req.userId,
+	});
+
+	res.sendStatus(200);
 });
 
 //Get group invitations.
-router.get('/', async (req: Request, res: Response) => {
-    const invites = await InviteModel.find({ inviteeId: req.userId });
+router.get("/", async (req: Request, res: Response) => {
+	const invites = await InviteModel.find({ inviteeId: req.userId });
 
-    const response = await Promise.all(
-        invites.map(async (invite) => {
-            return {
-                inviteId: invite.id,
-                groupName: await getGroupNameById(invite.groupId),
-                inviterName: await getNameById(invite.inviterId),
-            };
-        }),
-    );
+	const response = await Promise.all(
+		invites.map(async (invite) => {
+			return {
+				inviteId: invite.id,
+				groupName: await getGroupNameById(invite.groupId),
+				inviterName: await getNameById(invite.inviterId),
+			};
+		}),
+	);
 
-    const parsedResponse = v.safeParse(
-        InviteGetRequestSchema.responseBody,
-        response,
-    );
+	const parsedResponse = v.safeParse(
+		InviteGetRequestSchema.responseBody,
+		response,
+	);
 
-    if (!parsedResponse.success) {
-        const error = 'Unable to parse response';
-        console.log(
-            `'GET' @ '/group/invite': ${error} - ${parsedResponse.issues}`,
-        );
-        res.status(500).json({ error });
-        return;
-    }
+	if (!parsedResponse.success) {
+		const error = "Unable to parse response";
+		console.log(
+			`'GET' @ '/group/invite': ${error} - `,
+			parsedResponse.issues,
+		);
+		res.status(500).json({ error });
+		return;
+	}
 
-    res.status(200).json(parsedResponse.output);
+	res.status(200).json(parsedResponse.output);
 });
 
 //Delete a group invitation.
-router.delete('/group/invite', async (req: Request, res: Response) => {
-    const parsedSearchParams = getParsedSearchParams(
-        InviteDeleteRequestSchema.searchParams,
-        req,
-    );
+router.delete("/group/invite", async (req: Request, res: Response) => {
+	const parsedSearchParams = getParsedSearchParams(
+		InviteDeleteRequestSchema.searchParams,
+		req,
+	);
 
-    if (!parsedSearchParams.inviteId.success) {
-        const error = 'Request did not include a valid invite id';
-        console.log(`'GET' @ '/group/invite/respond': ${error}`);
-        res.status(404).json({ error });
-        return;
-    }
+	if (!parsedSearchParams.inviteId.success) {
+		const error = "Request did not include a valid invite id";
+		console.log(`'DELETE' @ '/group/invite/respond': ${error}`);
+		res.status(400).json({ error });
+		return;
+	}
 
-    const invite = await InviteModel.findById(
-        parsedSearchParams.inviteId.output,
-    );
+	const invite = await InviteModel.findById(
+		parsedSearchParams.inviteId.output,
+	);
 
-    if (!invite) {
-        const error = 'Invalid invite';
-        console.log(`'delete' @ '/group/invite': ${error}`);
-        res.status(404).json({ error });
-        return;
-    }
+	if (!invite) {
+		const error = "Invalid invite";
+		console.log(`'DELETE' @ '/group/invite': ${error}`);
+		res.status(400).json({ error });
+		return;
+	}
 
-    const group = await GroupModel.findById(invite.groupId);
+	const group = await GroupModel.findById(invite.groupId);
 
-    // Error if group does not exist
-    if (!group) {
-        const error = 'Invalid group';
-        console.log(`'delete' @ '/group/invite': ${error}`);
-        res.status(404).json({ error });
-        return;
-    }
+	// Error if group does not exist
+	if (!group) {
+		const error = "Invalid group";
+		console.log(`'DELETE' @ '/group/invite': ${error}`);
+		res.status(400).json({ error });
+		return;
+	}
 
-    // Error if user is not in group
-    if (!group.userIds.includes(req.userId)) {
-        const error = 'User is not a member of the group';
-        console.log(`'delete' @ '/group/invite': ${error}`);
-        res.status(401).json({ error });
-        return;
-    }
+	// Error if user is not in group
+	if (!group.userIds.includes(req.userId)) {
+		const error = "User is not a member of the group";
+		console.log(`'DELETE' @ '/group/invite': ${error}`);
+		res.status(401).json({ error });
+		return;
+	}
 
-    await InviteModel.findByIdAndDelete(invite.id);
+	await InviteModel.findByIdAndDelete(invite.id);
 
-    res.sendStatus(200);
+	res.sendStatus(200);
 });
 
 //group/invite/respond ---------------
 //Respond to invite.
-router.post('/respond', async (req: Request, res: Response) => {
-    const parsedParams = getParsedSearchParams(
-        InviteRespondRequestSchema.searchParams,
-        req,
-    );
+router.post("/respond", async (req: Request, res: Response) => {
+	const parsedParams = getParsedSearchParams(
+		InviteRespondRequestSchema.searchParams,
+		req,
+	);
 
-    if (!parsedParams.inviteId.success) {
-        const error = 'Request did not include an invite id';
-        console.log(`'GET' @ '/group/invite/respond': ${error}`);
-        res.status(404).json({ error });
-        return;
-    }
+	if (!parsedParams.inviteId.success) {
+		const error = "Request did not include an invite id";
+		console.log(`'GET' @ '/group/invite/respond': ${error}`);
+		res.status(404).json({ error });
+		return;
+	}
 
-    const parsedBody = v.safeParse(
-        InviteRespondRequestSchema.requestBody,
-        req.body,
-    );
+	const parsedBody = v.safeParse(
+		InviteRespondRequestSchema.requestBody,
+		req.body,
+	);
 
-    if (!parsedBody.success) {
-        const error = 'Unable to parse the request body';
-        console.log(`'post' @ '/group/invite/respond': ${error}`);
-        res.status(404).json({ error });
-        return;
-    }
+	if (!parsedBody.success) {
+		const error = "Unable to parse the request body";
+		console.log(`'POST' @ '/group/invite/respond': ${error}`);
+		res.status(404).json({ error });
+		return;
+	}
 
-    const invite = await InviteModel.findById(parsedParams.inviteId.output);
+	const invite = await InviteModel.findById(parsedParams.inviteId.output);
 
-    if (!invite) {
-        const error = 'Invite does not exist';
-        console.log(`'post' @ '/group/invite/respond': ${error}`);
-        res.status(400).json({ error });
-        return;
-    }
+	if (!invite) {
+		const error = "Invite does not exist";
+		console.log(`'POST' @ '/group/invite/respond': ${error}`);
+		res.status(400).json({ error });
+		return;
+	}
 
-    if (invite.inviteeId !== req.userId) {
-        const error = 'Invite is not for this user';
-        console.log(`'post' @ '/group/invite/respond': ${error}`);
-        res.status(400).json({ error });
-        return;
-    }
+	if (invite.inviteeId !== req.userId) {
+		const error = "Invite is not for this user";
+		console.log(`'POST' @ '/group/invite/respond': ${error}`);
+		res.status(400).json({ error });
+		return;
+	}
 
-    // if accepted = join group + add userid: 0 to all group goal progress THEN delete invite
-    if (parsedBody.output.accepted) {
-        const group = await GroupModel.findById(invite.groupId);
+	// if accepted = join group + add userid: 0 to all group goal progress THEN delete invite
+	if (parsedBody.output.accepted) {
+		const group = await GroupModel.findById(invite.groupId);
 
-        if (!group) {
-            const error = 'Group does not exist';
-            console.log(`'post' @ '/group/invite/respond': ${error}`);
-            res.status(400).json({ error });
-            return;
-        }
+		if (!group) {
+			const error = "Group does not exist";
+			console.log(`'POST' @ '/group/invite/respond': ${error}`);
+			res.status(400).json({ error });
+			return;
+		}
 
-        const user = await UserModel.findById(req.userId);
+		const user = await UserModel.findById(req.userId);
 
-        if (!user) {
-            const error = 'User does not exist';
-            console.log(`'post' @ '/group/invite/respond': ${error}`);
-            res.status(400).json({ error });
-            return;
-        }
+		if (!user) {
+			const error = "User does not exist";
+			console.log(`'POST' @ '/group/invite/respond': ${error}`);
+			res.status(400).json({ error });
+			return;
+		}
 
-        group.userIds.push(req.userId);
-        await group.save();
-        user.groupIds.push(invite.groupId);
-        await user.save();
+		group.userIds.push(req.userId);
+		await group.save();
+		user.groupIds.push(invite.groupId);
+		await user.save();
 
-        for (const goalId of group.goalIds) {
-            const goal = await GoalModel.findById(goalId);
-            if (!goal || goal.type === GoalType.Individual) continue;
+		for (const goalId of group.goalIds) {
+			const goal = await GoalModel.findById(goalId);
+			if (!goal || goal.type === GoalType.Individual) continue;
 
-            goal.progress.set(req.userId, 0);
-            goal.save();
-        }
-    }
+			goal.progress.set(req.userId, 0);
+			goal.save();
+		}
+	}
 
-    await InviteModel.findByIdAndDelete(parsedParams.inviteId.output);
+	await InviteModel.findByIdAndDelete(parsedParams.inviteId.output);
 
-    // const inviteResponse = parseInput(InviteRespondRequestSchema, req, res);
-    // if (inviteResponse.success) {
-    //     const inviteId = inviteResponse.invite;
-    //     if (inviteResponse.accepted == true) {
-    //         const userId = inviteResponse.user;
-    //         const groupData = await get(CollectionEnum.Invite, inviteId);
-    //         if (groupData == null) {
-    //             res.status(404).send('Invite not found');
-    //             return;
-    //         }
-    //         update(CollectionEnum.Group, groupData['group'], {
-    //             $push: { users: userId },
-    //         });
-    //         update(CollectionEnum.User, userId, {
-    //             $push: { groups: groupData['group'] },
-    //         });
-    //         console.log(
-    //             'added group:' + groupData['group'] + '. To user:' + userId,
-    //         );
-    //     }
-    //     await remove(CollectionEnum.Invite, { _id: inviteId });
-    //     parseOutput(InviteRespondRequestSchema, {}, res);
-    // }
+	// const inviteResponse = parseInput(InviteRespondRequestSchema, req, res);
+	// if (inviteResponse.success) {
+	//     const inviteId = inviteResponse.invite;
+	//     if (inviteResponse.accepted == true) {
+	//         const userId = inviteResponse.user;
+	//         const groupData = await get(CollectionEnum.Invite, inviteId);
+	//         if (groupData == null) {
+	//             res.status(404).send('Invite not found');
+	//             return;
+	//         }
+	//         update(CollectionEnum.Group, groupData['group'], {
+	//             $push: { users: userId },
+	//         });
+	//         update(CollectionEnum.User, userId, {
+	//             $push: { groups: groupData['group'] },
+	//         });
+	//         console.log(
+	//             'added group:' + groupData['group'] + '. To user:' + userId,
+	//         );
+	//     }
+	//     await remove(CollectionEnum.Invite, { _id: inviteId });
+	//     parseOutput(InviteRespondRequestSchema, {}, res);
+	// }
 });
