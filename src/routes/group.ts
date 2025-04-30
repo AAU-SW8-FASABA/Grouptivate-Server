@@ -64,7 +64,7 @@ router.post("/", async (req: Request, res: Response) => {
 		return;
 	}
 
-	res.status(200).json(parsedResponse.output);
+	res.status(201).json(parsedResponse.output);
 });
 
 // Get group info.

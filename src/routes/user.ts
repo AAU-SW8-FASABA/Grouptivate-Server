@@ -17,6 +17,7 @@ import express from "express";
 import argon2 from "argon2";
 import crypto from "node:crypto";
 import * as v from "valibot";
+import { StatusCode } from "../dbEnums";
 
 export const router = express.Router();
 
@@ -53,7 +54,7 @@ router.post("/", async (req: Request, res: Response) => {
 
 	// If the insert failed, the user already exists
 	if (!insertResult.upsertedId) {
-		res.status(409).send("User with this name already exists");
+		res.status(409).json({ error: "User with this name already exists" });
 		return;
 	}
 
@@ -130,7 +131,7 @@ router.get("/", async (req: Request, res: Response) => {
 });
 
 // The session token has already been verified by the middleware
-router.get("/verify", async (req: Request, res: Response) => {
+router.post("/verify", async (req: Request, res: Response) => {
 	res.sendStatus(200);
 });
 
@@ -140,7 +141,9 @@ router.post("/login", async (req: Request, res: Response) => {
 	if (!parsedRequest.success) {
 		const error = `Failed to parse body for 'POST' at '/login'`;
 		console.log(error + ": ", parsedRequest.issues);
-		res.status(404).json({ error });
+		res.status(StatusCode.BAD_REQUEST).json({
+			error: parsedRequest.issues,
+		});
 		return;
 	}
 
@@ -153,7 +156,7 @@ router.post("/login", async (req: Request, res: Response) => {
 	) {
 		const error = "Incorrect login information";
 		console.log(`'POST' @ '/login': ${error}`);
-		res.status(401).json({ error });
+		res.status(StatusCode.UNAUTHORIZED).json({ error });
 		return;
 	}
 
@@ -177,9 +180,9 @@ router.post("/login", async (req: Request, res: Response) => {
 	if (!parsedResponse.success) {
 		const error = `Failed to parse response body at 'POST' for '/login'`;
 		console.log(error + ": ", parsedResponse.issues);
-		res.status(500).json({ error });
+		res.status(StatusCode.INTERNAL_SERVER_ERROR).json({ error });
 		return;
 	}
 
-	res.status(200).json(parsedResponse.output);
+	res.status(StatusCode.OK).json(parsedResponse.output);
 });

@@ -1,10 +1,9 @@
-import * as v from "valibot";
-
 import {
 	type BaseSchema,
 	type BaseIssue,
 	type InferOutput,
-	parse,
+	type SafeParseResult,
+	safeParse,
 	InferInput,
 } from "valibot";
 
@@ -33,7 +32,7 @@ export async function fetchApi<
 	requestBody: R extends BaseSchema<unknown, unknown, BaseIssue<unknown>>
 		? InferInput<R>
 		: undefined;
-}): Promise<InferOutput<D>>;
+}): Promise<[Response, SafeParseResult<D>]>;
 export async function fetchApi<
 	P extends SearchParametersSchema,
 	R extends BaseSchema<unknown, unknown, BaseIssue<unknown>> | undefined,
@@ -47,7 +46,7 @@ export async function fetchApi<
 	requestBody: R extends BaseSchema<unknown, unknown, BaseIssue<unknown>>
 		? InferInput<R>
 		: undefined;
-}): Promise<void>;
+}): Promise<[Response, undefined]>;
 export async function fetchApi<
 	P extends SearchParametersSchema,
 	R extends BaseSchema<unknown, unknown, BaseIssue<unknown>> | undefined,
@@ -74,8 +73,8 @@ export async function fetchApi<
 		newUrl.searchParams.set(key, JSON.stringify(value));
 	}
 	const headers: Record<string, string> = {};
-	if (searchParams.responseBody) {
-		headers["Content-Type"] = "application/json";
+	if (schema.requestBody) {
+		headers["Content-Type"] = "application/json;charset=UTF-8";
 	}
 	if (token) {
 		headers["Authorization"] = `Bearer ${token}`;
@@ -85,10 +84,11 @@ export async function fetchApi<
 		body: requestBody ? JSON.stringify(requestBody) : undefined,
 		headers,
 	});
-	if (!response.ok) {
-		throw new Error(`Received bad response: ${await response.text()}`);
-	}
-	if (schema.responseBody) {
-		return parse(schema.responseBody, await response.json());
-	}
+
+	return [
+		response,
+		schema.responseBody
+			? safeParse(schema.responseBody, await response.json())
+			: undefined,
+	];
 }
