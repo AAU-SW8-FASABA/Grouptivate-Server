@@ -7,7 +7,12 @@ import { router as userRouter } from "./routes/user";
 import { router as groupRouter } from "./routes/group";
 import { router as groupsRouter } from "./routes/groups";
 
-export async function createServer(mongoUri: string) {
+import configureStreakJobs from "./jobs/streakJob";
+
+export async function createServer(
+	mongoUri: string,
+	testMode: boolean = false,
+) {
 	try {
 		await MG.connect(mongoUri, { dbName: "Grouptivate" });
 		console.log("Connected to MongoDB");
@@ -32,6 +37,10 @@ export async function createServer(mongoUri: string) {
 
 	const server = app.listen(PORT, () => {
 		console.log(`Server is running on port ${PORT}`);
+		if (!testMode) {
+			console.log(`Configuring Cron Jobs`);
+			configureStreakJobs();
+		}
 	});
 
 	process.on("SIGINT", async () => {

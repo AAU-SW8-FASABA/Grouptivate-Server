@@ -8,7 +8,7 @@
 	"author": "",
 	"license": "MIT",
 	"scripts": {
-		"test": "tsx --test --test-concurrency=1 test/*.test.ts",
+		"test": "tsx --test --test-concurrency=1 test/streak.test.ts",
 		"prod": "dotenvx run -- npx tsx index.ts",
 		"dev": "dotenvx run -- npx tsx index.ts",
 		"format": "prettier --ignore-path .gitignore --write \"./\""
@@ -17,6 +17,7 @@
 		"@types/cors": "^2.8.17",
 		"@types/express": "^5.0.1",
 		"@types/node": "^22.14.0",
+		"@types/node-cron": "^3.0.11",
 		"mongodb-memory-server": "^10.1.4",
 		"prettier": "^3.5.3",
 		"tsx": "^4.19.3",

@@ -11,7 +11,7 @@ export async function start() {
 		instance: { dbName: "Grouptivate" },
 	});
 	if (!mongoServer) return;
-	serverStopFunc = await createServer(mongoServer.getUri());
+	serverStopFunc = await createServer(mongoServer.getUri(), true);
 }
 
 // Stop database and server
