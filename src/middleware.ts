@@ -1,4 +1,4 @@
-import type { RequestHandler, Request } from "express";
+import type { RequestHandler } from "express";
 import SessionModel from "./models/SessionModel";
 import { StatusCode } from "./dbEnums";
 

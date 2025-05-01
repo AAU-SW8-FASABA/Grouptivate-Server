@@ -8,7 +8,6 @@ import {
 	GoalPatchRequestSchema,
 } from "../Grouptivate-API/schemas/Goal";
 import { GoalType } from "../Grouptivate-API/schemas/Goal";
-import { Interval } from "../Grouptivate-API/schemas/Interval";
 import GroupModel from "../src/models/GroupModel";
 import { StatusCode } from "../src/dbEnums";
 import { Metric } from "../Grouptivate-API/schemas/Metric";

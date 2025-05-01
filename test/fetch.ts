@@ -1,7 +1,6 @@
 import {
 	type BaseSchema,
 	type BaseIssue,
-	type InferOutput,
 	type SafeParseResult,
 	safeParse,
 	InferInput,

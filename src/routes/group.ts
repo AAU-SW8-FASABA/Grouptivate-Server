@@ -8,7 +8,6 @@ import GroupModel from "../models/GroupModel";
 import GoalModel from "../models/GoalModel";
 import UserModel from "../models/UserModel";
 
-import MG from "mongoose";
 import express, { type Request, type Response } from "express";
 import * as v from "valibot";
 

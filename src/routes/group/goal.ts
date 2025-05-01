@@ -10,9 +10,6 @@ import GroupModel from "../../models/GroupModel";
 import GoalModel from "../../models/GoalModel";
 import { getParsedSearchParams } from "../../helpers/searchParamHelpers";
 import { StatusCode } from "../../dbEnums";
-import UserModel from "../../models/UserModel";
-
-import MG from "mongoose";
 
 export const router = express.Router();
 

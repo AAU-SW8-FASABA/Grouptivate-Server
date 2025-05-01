@@ -1,6 +1,6 @@
 import MG from "mongoose";
 import { CollectionEnum } from "../dbEnums";
-import type { Interval } from "../../Grouptivate-API/schemas/Interval";
+import { Interval } from "../../Grouptivate-API/schemas/Interval";
 
 const GroupSchema = new MG.Schema({
 	name: {
@@ -13,7 +13,7 @@ const GroupSchema = new MG.Schema({
 	},
 	interval: {
 		type: String,
-		enum: ["daily", "weekly", "monthly"],
+		enum: Object.values(Interval),
 		required: true,
 	},
 	goalIds: {

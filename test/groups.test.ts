@@ -4,7 +4,6 @@ import { start, end, clearDatabase } from "./setup";
 import { fetchApi, RequestMethod } from "./fetch";
 
 import { GroupsGetRequestSchema } from "../Grouptivate-API/schemas/Group";
-import { Interval } from "../Grouptivate-API/schemas/Interval";
 import { StatusCode } from "../src/dbEnums";
 import { createGroup, createUser } from "./helpers";
 
