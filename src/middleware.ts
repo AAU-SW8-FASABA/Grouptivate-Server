@@ -1,0 +1,37 @@
+import type { RequestHandler } from "express";
+import SessionModel from "./models/SessionModel";
+import { StatusCode } from "./dbEnums";
+
+export const authMiddleware: RequestHandler = async (req, res, next) => {
+	if (
+		[
+			{ path: "/", method: "GET" },
+			{ path: "/user", method: "POST" },
+			{ path: "/user/login", method: "POST" },
+		].some(
+			(route) => route.path === req.path && route.method === req.method,
+		)
+	) {
+		next();
+		return;
+	}
+
+	const token = req.headers.authorization?.split(" ")[1];
+	if (!token) {
+		res.status(StatusCode.UNAUTHORIZED).json({
+			message: "Missing Authorization Token",
+		});
+		return;
+	}
+
+	const session = await SessionModel.findOne({ token });
+	if (!session) {
+		res.status(StatusCode.UNAUTHORIZED).json({
+			message: "No active session",
+		});
+		return;
+	}
+
+	req.userId = session.userId;
+	next();
+};

@@ -1,20 +1,13 @@
-import express, { response } from 'express';
-import type { Request, Response } from 'express';
-import { parseInput, parseOutput } from './src/schemaParsers';
-import { router as userRoutes } from './routes/user/userRoutes';
-import { router as groupRoutes } from './routes/group/groupRoutes';
+import { createServer } from "./src/server";
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+const connectionString = process.env.ATLAS_URI;
 
-app.use(express.json());
+if (!connectionString) {
+	throw new Error("ATLAS_URI is not set");
+}
 
-app.get('/', async (req: Request, res: Response) => {
-    res.send('Hello to the one and one grouptivate');
-});
-app.use('/user', userRoutes);
-app.use('/group', groupRoutes);
-
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
+try {
+	createServer(connectionString);
+} catch (e) {
+	console.error(`Failed to start server: ${e}`);
+}
