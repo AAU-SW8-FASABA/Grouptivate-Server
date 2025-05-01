@@ -25,6 +25,11 @@ export const router = express.Router();
 router.use("/invite", inviteRouter);
 router.use("/goal", goalRouter);
 
+// TODO: .get("s") altså groups i flertal så man ikke skal spamme for hver group!!!
+// TODO: Increment streak
+// TODO: Patch
+// TODO: How does the group get their outstanding invitations so that they can delete?
+
 router.post("/", async (req: Request, res: Response) => {
 	const parsedBody = v.safeParse(
 		GroupCreateRequestSchema.requestBody,
@@ -88,7 +93,7 @@ router.get("/", async (req: Request, res: Response) => {
 	if (!group) {
 		const error = "Invalid group";
 		console.log(`'GET' @ '/group': ${error}`);
-		res.status(StatusCode.BAD_REQUEST).json({ error });
+		res.status(StatusCode.NOT_FOUND).json({ error });
 		return;
 	}
 
@@ -96,7 +101,7 @@ router.get("/", async (req: Request, res: Response) => {
 	if (!group.userIds.includes(req.userId)) {
 		const error = "User is not a member of the group";
 		console.log(`'GET' @ '/group': ${error}`);
-		res.status(StatusCode.UNAUTHORIZED).json({ error });
+		res.status(StatusCode.FORBIDDEN).json({ error });
 		return;
 	}
 
@@ -163,14 +168,14 @@ router.post("/remove", async (req: Request, res: Response) => {
 	if (!group) {
 		const error = "Group does not exist";
 		console.log(`'POST' @ '/group/remove': ${error}`);
-		res.status(StatusCode.BAD_REQUEST).json({ error });
+		res.status(StatusCode.NOT_FOUND).json({ error });
 		return;
 	}
 
 	if (!group.userIds.includes(req.userId)) {
 		const error = "Requesting user is not a member of this group";
 		console.log(`'POST' @ '/group/remove': ${error}`);
-		res.status(StatusCode.UNAUTHORIZED).json({ error });
+		res.status(StatusCode.FORBIDDEN).json({ error });
 		return;
 	}
 
@@ -204,10 +209,10 @@ router.post("/remove", async (req: Request, res: Response) => {
 				await GroupModel.findByIdAndUpdate(group._id, {
 					$pull: { goalIds: goal._id },
 				});
-				await GoalModel.findByIdAndDelete(group._id);
+				await GoalModel.findByIdAndDelete(goal._id);
 			} else {
 				// Remove progress from group goal
-				GoalModel.findByIdAndUpdate(goal._id, {
+				await GoalModel.findByIdAndUpdate(goal._id, {
 					$unset: { [`progress.${parsedBody.output.userId}`]: "" },
 				});
 			}

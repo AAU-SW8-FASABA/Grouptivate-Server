@@ -42,7 +42,7 @@ router.post("/", async (req: Request, res: Response) => {
 	if (!group) {
 		const error = "Invalid group";
 		console.log(`'POST' @ '/group/invite': ${error}`);
-		res.status(StatusCode.BAD_REQUEST).json({ error });
+		res.status(StatusCode.NOT_FOUND).json({ error });
 		return;
 	}
 
@@ -50,7 +50,7 @@ router.post("/", async (req: Request, res: Response) => {
 	if (!group.userIds.includes(req.userId)) {
 		const error = "User is not a member of the group";
 		console.log(`'POST' @ '/group/invite': ${error}`);
-		res.status(StatusCode.UNAUTHORIZED).json({ error });
+		res.status(StatusCode.FORBIDDEN).json({ error });
 		return;
 	}
 
@@ -59,7 +59,7 @@ router.post("/", async (req: Request, res: Response) => {
 	if (!inviteeId) {
 		const error = "This user does not exist";
 		console.log(`'POST' @ '/group/invite': ${error}`);
-		res.status(StatusCode.BAD_REQUEST).json({ error });
+		res.status(StatusCode.NOT_FOUND).json({ error });
 		return;
 	}
 
@@ -117,7 +117,7 @@ router.get("/", async (req: Request, res: Response) => {
 });
 
 //Delete a group invitation.
-router.delete("/group/invite", async (req: Request, res: Response) => {
+router.delete("/", async (req: Request, res: Response) => {
 	const parsedSearchParams = getParsedSearchParams(
 		InviteDeleteRequestSchema.searchParams,
 		req,
@@ -155,13 +155,13 @@ router.delete("/group/invite", async (req: Request, res: Response) => {
 	if (!group.userIds.includes(req.userId)) {
 		const error = "User is not a member of the group";
 		console.log(`'DELETE' @ '/group/invite': ${error}`);
-		res.status(StatusCode.UNAUTHORIZED).json({ error });
+		res.status(StatusCode.FORBIDDEN).json({ error });
 		return;
 	}
 
 	await InviteModel.findByIdAndDelete(invite.id);
 
-	res.sendStatus(StatusCode.OK);
+	res.sendStatus(StatusCode.NO_CONTENT);
 });
 
 //group/invite/respond ---------------
@@ -203,7 +203,7 @@ router.post("/respond", async (req: Request, res: Response) => {
 	if (invite.inviteeId !== req.userId) {
 		const error = "Invite is not for this user";
 		console.log(`'POST' @ '/group/invite/respond': ${error}`);
-		res.status(StatusCode.UNAUTHORIZED).json({ error });
+		res.status(StatusCode.FORBIDDEN).json({ error });
 		return;
 	}
 

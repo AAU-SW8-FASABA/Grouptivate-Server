@@ -13,9 +13,8 @@ import { StatusCode } from "../../dbEnums";
 
 export const router = express.Router();
 
-//Group/goal ------------------------ Bread
+//Group/goal ------------------------
 //Create goal.
-// TODO: Måske booming måde at håndtere SearchParams
 router.post("/", async (req: Request, res: Response) => {
 	const parsedParams = getParsedSearchParams(
 		GoalCreateRequestSchema.searchParams,
@@ -45,7 +44,7 @@ router.post("/", async (req: Request, res: Response) => {
 		parsedBody.output.type === GoalType.Individual &&
 		!parsedParams.userId.success
 	) {
-		const error = "Request did not include a user uuid";
+		const error = "Request did not include a user id";
 		console.log(`'POST' @ '/group/goal': ${error}`);
 		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
@@ -57,7 +56,7 @@ router.post("/", async (req: Request, res: Response) => {
 	if (!group) {
 		const error = "Invalid group";
 		console.log(`'POST' @ '/group/goal': ${error}`);
-		res.status(StatusCode.BAD_REQUEST).json({ error });
+		res.status(StatusCode.NOT_FOUND).json({ error });
 		return;
 	}
 
@@ -65,7 +64,7 @@ router.post("/", async (req: Request, res: Response) => {
 	if (!group.userIds.includes(req.userId)) {
 		const error = "User is not a member of the group";
 		console.log(`'POST' @ '/group/goal': ${error}`);
-		res.status(StatusCode.UNAUTHORIZED).json({ error });
+		res.status(StatusCode.FORBIDDEN).json({ error });
 		return;
 	}
 
@@ -125,7 +124,6 @@ router.delete("/", async (req: Request, res: Response) => {
 		goalIds: parsedBody.output.goalId,
 	});
 
-	//TODO: Tror måske vi skal ændre mange BAD_REQUEST til NOT_FOUND? Måske
 	if (!group) {
 		const error = "Failed to find group";
 		console.log(`'DELETE' @ '/group/goal': ${error}`);
@@ -136,7 +134,7 @@ router.delete("/", async (req: Request, res: Response) => {
 	if (!group.userIds.includes(req.userId)) {
 		const error = "User not in group";
 		console.log(`'DELETE' @ '/group/goal': ${error}`);
-		res.status(StatusCode.UNAUTHORIZED).json({ error });
+		res.status(StatusCode.FORBIDDEN).json({ error });
 		return;
 	}
 
@@ -147,5 +145,5 @@ router.delete("/", async (req: Request, res: Response) => {
 
 	await GoalModel.findByIdAndDelete(parsedBody.output.goalId);
 
-	res.sendStatus(StatusCode.BAD_REQUEST);
+	res.sendStatus(StatusCode.NO_CONTENT);
 });

@@ -94,7 +94,7 @@ router.get("/", async (req: Request, res: Response) => {
 	if (!user) {
 		const error = `User not found`;
 		console.log(error);
-		res.status(StatusCode.BAD_REQUEST).json({ error });
+		res.status(StatusCode.NOT_FOUND).json({ error });
 		return;
 	}
 

@@ -311,7 +311,7 @@ test("POST @ user/login: incorrect username must fail", async (t) => {
 	assert.strictEqual(
 		loginResponse.status,
 		StatusCode.UNAUTHORIZED,
-		"Login response must be 201 UNAUTHORIZED",
+		"Login response must be 401 UNAUTHORIZED",
 	);
 });
 
@@ -357,6 +357,7 @@ test("POST @ user/login: incorrect password must fail", async (t) => {
 		"Login response must be 401 UNAUTHORIZED",
 	);
 });
+
 test("POST @ user/login: can login and has only one session token", async (t) => {
 	const username = "testName";
 	const password = "testPassword1";

@@ -3,16 +3,12 @@ import { test, before, beforeEach, after, TestContext } from "node:test";
 import { start, end, clearDatabase } from "./setup";
 import { fetchApi, RequestMethod } from "./fetch";
 
-import { UserCreateRequestSchema } from "../Grouptivate-API/schemas/User";
 import {
 	GroupCreateRequestSchema,
 	GroupGetRequestSchema,
 	GroupRemoveRequestSchema,
 } from "../Grouptivate-API/schemas/Group";
-import {
-	GoalCreateRequestSchema,
-	GoalType,
-} from "../Grouptivate-API/schemas/Goal";
+import { GoalType } from "../Grouptivate-API/schemas/Goal";
 import { Interval } from "../Grouptivate-API/schemas/Interval";
 import GroupModel from "../src/models/GroupModel";
 import UserModel from "../src/models/UserModel";
@@ -23,6 +19,12 @@ import {
 	SportActivity,
 } from "../Grouptivate-API/schemas/Activity";
 import GoalModel from "../src/models/GoalModel";
+import {
+	createGoal,
+	createGroup,
+	createUser,
+	inviteAcceptFlow,
+} from "./helpers";
 
 before(async () => {
 	await start();
@@ -35,105 +37,6 @@ beforeEach(async () => {
 after(async () => {
 	await end();
 });
-
-async function createUser(
-	t: TestContext,
-	userName: string = "testName",
-	password: string = "testPassword1",
-) {
-	const [createUserResponse, createUserBody] = await fetchApi({
-		path: "/user",
-		method: RequestMethod.POST,
-		schema: UserCreateRequestSchema,
-		token: null,
-		searchParams: {},
-		requestBody: {
-			name: userName,
-			password: password,
-		},
-	});
-
-	if (
-		!createUserBody.success ||
-		createUserResponse.status !== StatusCode.CREATED
-	) {
-		t.skip(`Skipped '${t.name}' due to failed user creation.`);
-		return undefined;
-	}
-
-	return createUserBody.output;
-}
-
-async function createGroup(
-	t: TestContext,
-	name: string,
-	interval: Interval,
-	token: string,
-) {
-	const [createGroupResponse, createGroupBody] = await fetchApi({
-		path: "/group",
-		method: RequestMethod.POST,
-		schema: GroupCreateRequestSchema,
-		token: token,
-		searchParams: {},
-		requestBody: {
-			groupName: name,
-			interval: interval,
-		},
-	});
-
-	if (
-		!createGroupBody.success ||
-		createGroupResponse.status !== StatusCode.CREATED
-	) {
-		t.skip(`Skipped '${t.name}' due to failed group creation.`);
-		return;
-	}
-
-	return createGroupBody.output;
-}
-
-async function createGoal(
-	t: TestContext,
-	groupId: string,
-	userId: string,
-	type: GoalType,
-	title: string,
-	activity: SportActivity | OtherActivity,
-	metric: Metric,
-	target: number,
-	token: string,
-) {
-	const [createGoalResponse, createGoalBody] = await fetchApi({
-		path: "/group/goal",
-		method: RequestMethod.POST,
-		schema: GoalCreateRequestSchema,
-		token: token,
-		searchParams: {
-			groupId,
-			userId,
-		},
-		requestBody: {
-			type,
-			title,
-			activity,
-			metric,
-			target,
-		},
-	});
-
-	if (
-		!createGoalBody.success ||
-		createGoalResponse.status !== StatusCode.CREATED
-	) {
-		t.skip(`Skipped '${t.name}' due to failed goal creation.`);
-		return;
-	}
-
-	return createGoalBody.output;
-}
-
-// async function inviteAcceptFlow(inviteeId: string, inviterId: string);
 
 test("POST @ group: can create group", async (t) => {
 	const user = await createUser(t);
@@ -254,17 +157,17 @@ test("GET @ group: can get valid group with group goal", async (t) => {
 	const activity = SportActivity.Frisbee;
 	const metric = Metric.Count;
 	const target = 5;
-	createGoal(
+	await createGoal({
 		t,
-		group.groupId,
-		user.userId,
+		groupId: group.groupId,
+		userId: user.userId,
 		type,
 		title,
 		activity,
 		metric,
 		target,
-		user.token,
-	);
+		token: user.token,
+	});
 
 	const [getGroupResponse, getGroupBody] = await fetchApi({
 		path: "/group",
@@ -353,17 +256,17 @@ test("GET @ group: can get valid group with individual goal", async (t) => {
 	const activity = SportActivity.Frisbee;
 	const metric = Metric.Count;
 	const target = 5;
-	createGoal(
+	await createGoal({
 		t,
-		group.groupId,
-		user.userId,
+		groupId: group.groupId,
+		userId: user.userId,
 		type,
 		title,
 		activity,
 		metric,
 		target,
-		user.token,
-	);
+		token: user.token,
+	});
 
 	const [getGroupResponse, getGroupBody] = await fetchApi({
 		path: "/group",
@@ -452,7 +355,7 @@ test("GET @ group: can not get invalid group", async (t) => {
 
 	assert(!getGroupBody.success, "Parsing was not meant to succeed");
 	assert(
-		getGroupResponse.status === StatusCode.BAD_REQUEST,
+		getGroupResponse.status === StatusCode.NOT_FOUND,
 		"Incorrect status code",
 	);
 });
@@ -507,17 +410,17 @@ test("POST @ group/remove: remove user from group with one user. Correctly delet
 	const group = await createGroup(t, groupName, Interval.Daily, user.token);
 	if (!group) return;
 
-	const goal = await createGoal(
+	const goal = await createGoal({
 		t,
-		group.groupId,
-		user.userId,
-		GoalType.Individual,
-		"testGoalTitle",
-		SportActivity.Running,
-		Metric.Distance,
-		3000,
-		user.token,
-	);
+		groupId: group.groupId,
+		userId: user.userId,
+		type: GoalType.Individual,
+		title: "testGoalTitle",
+		activity: SportActivity.Running,
+		metric: Metric.Distance,
+		target: 3000,
+		token: user.token,
+	});
 	if (!goal) return;
 
 	const [removeUserResponse, _] = await fetchApi({
@@ -562,17 +465,17 @@ test("POST @ group/remove: remove user from group with one user. Correctly delet
 	const group = await createGroup(t, groupName, Interval.Daily, user.token);
 	if (!group) return;
 
-	const goal = await createGoal(
+	const goal = await createGoal({
 		t,
-		group.groupId,
-		user.userId,
-		GoalType.Group,
-		"testGoalTitle",
-		SportActivity.Running,
-		Metric.Distance,
-		3000,
-		user.token,
-	);
+		groupId: group.groupId,
+		userId: user.userId,
+		type: GoalType.Group,
+		title: "testGoalTitle",
+		activity: SportActivity.Running,
+		metric: Metric.Distance,
+		target: 3000,
+		token: user.token,
+	});
 	if (!goal) return;
 
 	const [removeUserResponse, _] = await fetchApi({
@@ -626,21 +529,244 @@ test("POST @ group/remove: remove user from group with multiple users", async (t
 	);
 	if (!group) return;
 
-	// Invite user and accept, or just add them to group??
+	await inviteAcceptFlow(
+		t,
+		{ userName: userName2, userId: user2.userId, token: user2.token },
+		{ userName: userName1, userId: user1.userId, token: user1.token },
+		group.groupId,
+	);
 
 	const [removeUserResponse, _] = await fetchApi({
 		path: "/group/remove",
 		method: RequestMethod.POST,
 		schema: GroupRemoveRequestSchema,
-		token: user1.token,
+		token: user2.token,
 		searchParams: {},
 		requestBody: {
-			userId: user2.userId,
+			userId: user1.userId,
 			groupId: group.groupId,
 		},
 	});
+
+	assert(
+		removeUserResponse.status === StatusCode.OK,
+		"Incorrect status code",
+	);
+
+	const groupObject = await GroupModel.findById(group.groupId);
+
+	assert(
+		groupObject !== null,
+		"The group should not have been deleted in the database",
+	);
+	assert(
+		!groupObject.userIds.includes(user1.userId),
+		"User 1 was removed but the group still has their userId in userIds",
+	);
+	assert(
+		groupObject.userIds.includes(user2.userId),
+		"User 2 was not removed but the group does not have their userId in userIds",
+	);
+
+	const userObject1 = await UserModel.findById(user1.userId);
+	const userObject2 = await UserModel.findById(user2.userId);
+
+	assert(
+		!userObject1?.groupIds.includes(group.groupId),
+		"User 1 was removed but still has the groupId in groupIds",
+	);
+	assert(
+		userObject2?.groupIds.includes(group.groupId),
+		"User 2 was not removed but does not have the groupId in groupIds",
+	);
 });
 
-test("POST @ group/remove: remove user from group with multiple users. Correctly deletes individual goal", async (t) => {});
+test("POST @ group/remove: remove user from group with multiple users. Correctly deletes individual goal", async (t) => {
+	const userName1 = "testUser1";
+	const user1 = await createUser(t, userName1);
+	if (!user1) return;
 
-test("POST @ group/remove: remove user from group with multiple users. Correctly deletes group goal", async (t) => {});
+	const userName2 = "testUser2";
+	const user2 = await createUser(t, userName2);
+	if (!user2) return;
+
+	const group = await createGroup(
+		t,
+		"testGroup",
+		Interval.Daily,
+		user1.token,
+	);
+	if (!group) return;
+
+	await inviteAcceptFlow(
+		t,
+		{ userName: userName2, userId: user2.userId, token: user2.token },
+		{ userName: userName1, userId: user1.userId, token: user1.token },
+		group.groupId,
+	);
+
+	const goal = await createGoal({
+		t,
+		groupId: group.groupId,
+		userId: user1.userId,
+		type: GoalType.Individual,
+		title: "GoalTitle",
+		activity: OtherActivity.ActiveCaloriesBurned,
+		metric: Metric.Count,
+		target: 1000,
+		token: user1.token,
+	});
+	if (!goal) return;
+
+	const [removeUserResponse, _] = await fetchApi({
+		path: "/group/remove",
+		method: RequestMethod.POST,
+		schema: GroupRemoveRequestSchema,
+		token: user2.token,
+		searchParams: {},
+		requestBody: {
+			userId: user1.userId,
+			groupId: group.groupId,
+		},
+	});
+
+	assert(
+		removeUserResponse.status === StatusCode.OK,
+		"Incorrect status code",
+	);
+
+	const groupObject = await GroupModel.findById(group.groupId);
+
+	assert(
+		groupObject !== null,
+		"The group should not have been deleted in the database",
+	);
+	assert(
+		!groupObject.userIds.includes(user1.userId),
+		"User 1 was removed but the group still has their userId in userIds",
+	);
+	assert(
+		groupObject.userIds.includes(user2.userId),
+		"User 2 was not removed but the group does not have their userId in userIds",
+	);
+	assert(
+		groupObject.goalIds.length === 0,
+		"User 1 was removed but their goal remains in the group",
+	);
+
+	const userObject1 = await UserModel.findById(user1.userId);
+	const userObject2 = await UserModel.findById(user2.userId);
+
+	assert(
+		!userObject1?.groupIds.includes(group.groupId),
+		"User 1 was removed but still has the groupId in groupIds",
+	);
+	assert(
+		userObject2?.groupIds.includes(group.groupId),
+		"User 2 was not removed but does not have the groupId in groupIds",
+	);
+
+	const goalLength = await GoalModel.countDocuments();
+	assert(
+		goalLength === 0,
+		"The user was removed from the group but their goal, still exists",
+	);
+});
+
+test("POST @ group/remove: remove user from group with multiple users. Correctly deletes group goal", async (t) => {
+	const userName1 = "testUser1";
+	const user1 = await createUser(t, userName1);
+	if (!user1) return;
+
+	const userName2 = "testUser2";
+	const user2 = await createUser(t, userName2);
+	if (!user2) return;
+
+	const group = await createGroup(
+		t,
+		"testGroup",
+		Interval.Daily,
+		user1.token,
+	);
+	if (!group) return;
+
+	await inviteAcceptFlow(
+		t,
+		{ userName: userName2, userId: user2.userId, token: user2.token },
+		{ userName: userName1, userId: user1.userId, token: user1.token },
+		group.groupId,
+	);
+
+	const goal = await createGoal({
+		t,
+		groupId: group.groupId,
+		userId: user1.userId,
+		type: GoalType.Group,
+		title: "GoalTitle",
+		activity: OtherActivity.ActiveCaloriesBurned,
+		metric: Metric.Count,
+		target: 1000,
+		token: user1.token,
+	});
+	if (!goal) return;
+
+	const [removeUserResponse, _] = await fetchApi({
+		path: "/group/remove",
+		method: RequestMethod.POST,
+		schema: GroupRemoveRequestSchema,
+		token: user2.token,
+		searchParams: {},
+		requestBody: {
+			userId: user1.userId,
+			groupId: group.groupId,
+		},
+	});
+
+	assert(
+		removeUserResponse.status === StatusCode.OK,
+		"Incorrect status code",
+	);
+
+	const groupObject = await GroupModel.findById(group.groupId);
+
+	assert(
+		groupObject !== null,
+		"The group should not have been deleted in the database",
+	);
+	assert(
+		!groupObject.userIds.includes(user1.userId),
+		"User 1 was removed but the group still has their userId in userIds",
+	);
+	assert(
+		groupObject.userIds.includes(user2.userId),
+		"User 2 was not removed but the group does not have their userId in userIds",
+	);
+	assert(
+		groupObject.goalIds.length === 1,
+		"Removing a user should not delete group goals",
+	);
+
+	const userObject1 = await UserModel.findById(user1.userId);
+	const userObject2 = await UserModel.findById(user2.userId);
+
+	assert(
+		!userObject1?.groupIds.includes(group.groupId),
+		"User 1 was removed but still has the groupId in groupIds",
+	);
+	assert(
+		userObject2?.groupIds.includes(group.groupId),
+		"User 2 was not removed but does not have the groupId in groupIds",
+	);
+
+	const goals = await GoalModel.find();
+
+	assert(
+		goals.length === 1,
+		"Removing a user should not delete Group goals from the database when users remain in the group",
+	);
+
+	assert(
+		goals[0].progress.size === 1,
+		"The progress of the group goal should only contain a single user",
+	);
+});
