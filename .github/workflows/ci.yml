@@ -31,8 +31,5 @@ jobs:
             - name: Install dependencies
               run: npm install-clean
 
-            - name: Run build
-              run: npm run build
-
             - name: Run integration tests
               run: npm run test
