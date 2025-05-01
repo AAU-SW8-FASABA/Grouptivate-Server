@@ -18,6 +18,7 @@ import { router as goalRouter } from "./group/goal";
 import { getParsedSearchParams } from "../helpers/searchParamHelpers";
 import { getUserMap, getUserIdByName } from "../helpers/userHelpers";
 import { GoalType } from "../../Grouptivate-API/schemas/Goal";
+import { StatusCode } from "../dbEnums";
 
 export const router = express.Router();
 
@@ -33,7 +34,7 @@ router.post("/", async (req: Request, res: Response) => {
 	if (!parsedBody.success) {
 		const error = "Unable to parse the request body";
 		console.log(`'POST' @ '/group': ${error}`);
-		res.status(404).json({ error });
+		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
 
@@ -60,11 +61,11 @@ router.post("/", async (req: Request, res: Response) => {
 	if (!parsedResponse.success) {
 		const error = "Unable to parse response body";
 		console.log(`'POST' @ '/group': ${error} - `, parsedResponse.issues);
-		res.status(500).json({ error });
+		res.status(StatusCode.INTERNAL_SERVER_ERROR).json({ error });
 		return;
 	}
 
-	res.status(201).json(parsedResponse.output);
+	res.status(StatusCode.CREATED).json(parsedResponse.output);
 });
 
 // Get group info.
@@ -77,7 +78,7 @@ router.get("/", async (req: Request, res: Response) => {
 	if (!parsedParams.groupId.success) {
 		const error = "Request did not include a valid groupId";
 		console.log(`'GET' @ '/group': ${error}`);
-		res.status(404).json({ error });
+		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
 
@@ -87,7 +88,7 @@ router.get("/", async (req: Request, res: Response) => {
 	if (!group) {
 		const error = "Invalid group";
 		console.log(`'GET' @ '/group': ${error}`);
-		res.status(404).json({ error });
+		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
 
@@ -95,7 +96,7 @@ router.get("/", async (req: Request, res: Response) => {
 	if (!group.userIds.includes(req.userId)) {
 		const error = "User is not a member of the group";
 		console.log(`'GET' @ '/group': ${error}`);
-		res.status(401).json({ error });
+		res.status(StatusCode.UNAUTHORIZED).json({ error });
 		return;
 	}
 
@@ -109,7 +110,7 @@ router.get("/", async (req: Request, res: Response) => {
 	if (userMap.size === 0) {
 		const error = "User IDs do not exist in this group";
 		console.log(`'GET' @ '/group': ${error}`);
-		res.status(500).json({ error });
+		res.status(StatusCode.INTERNAL_SERVER_ERROR).json({ error });
 		return;
 	}
 
@@ -135,11 +136,11 @@ router.get("/", async (req: Request, res: Response) => {
 	if (!parsedResponse.success) {
 		const error = "Unable to parse response";
 		console.log(`'GET' @ '/group': ${error} - `, parsedResponse.issues);
-		res.status(500).json({ error });
+		res.status(StatusCode.INTERNAL_SERVER_ERROR).json({ error });
 		return;
 	}
 
-	res.status(200).json(parsedResponse.output);
+	res.status(StatusCode.OK).json(parsedResponse.output);
 });
 
 //group/remove ----------------------
@@ -153,7 +154,7 @@ router.post("/remove", async (req: Request, res: Response) => {
 	if (!parsedBody.success) {
 		const error = "Unable to parse the request body";
 		console.log(`'POST' @ '/group/remove': ${error}`);
-		res.status(404).json({ error });
+		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
 
@@ -162,14 +163,14 @@ router.post("/remove", async (req: Request, res: Response) => {
 	if (!group) {
 		const error = "Group does not exist";
 		console.log(`'POST' @ '/group/remove': ${error}`);
-		res.status(400).json({ error });
+		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
 
 	if (!group.userIds.includes(req.userId)) {
 		const error = "Requesting user is not a member of this group";
 		console.log(`'POST' @ '/group/remove': ${error}`);
-		res.status(500).json({ error });
+		res.status(StatusCode.UNAUTHORIZED).json({ error });
 		return;
 	}
 
@@ -215,5 +216,5 @@ router.post("/remove", async (req: Request, res: Response) => {
 		await Promise.all(promises);
 	}
 
-	res.sendStatus(200);
+	res.sendStatus(StatusCode.OK);
 });

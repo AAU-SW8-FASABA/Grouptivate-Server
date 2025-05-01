@@ -9,6 +9,7 @@ import {
 import GroupModel from "../../models/GroupModel";
 import GoalModel from "../../models/GoalModel";
 import { getParsedSearchParams } from "../../helpers/searchParamHelpers";
+import { StatusCode } from "../../dbEnums";
 
 export const router = express.Router();
 
@@ -24,7 +25,7 @@ router.post("/", async (req: Request, res: Response) => {
 	if (!parsedParams.groupId.success) {
 		const error = "Request did not include a valid group id";
 		console.log(`'POST' @ '/group/goal': ${error} - `, parsedParams);
-		res.status(404).json({ error });
+		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
 
@@ -36,7 +37,7 @@ router.post("/", async (req: Request, res: Response) => {
 	if (!parsedBody.success) {
 		const error = `Failed to parse input`;
 		console.log(`'POST' @ 'group/goal': `, parsedBody.issues);
-		res.status(400).json({ error });
+		res.status(StatusCode.INTERNAL_SERVER_ERROR).json({ error });
 		return;
 	}
 
@@ -46,7 +47,7 @@ router.post("/", async (req: Request, res: Response) => {
 	) {
 		const error = "Request did not include a user uuid";
 		console.log(`'POST' @ '/group/goal': ${error}`);
-		res.status(404).json({ error });
+		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
 
@@ -56,7 +57,7 @@ router.post("/", async (req: Request, res: Response) => {
 	if (!group) {
 		const error = "Invalid group";
 		console.log(`'POST' @ '/group/goal': ${error}`);
-		res.status(404).json({ error });
+		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
 
@@ -64,7 +65,7 @@ router.post("/", async (req: Request, res: Response) => {
 	if (!group.userIds.includes(req.userId)) {
 		const error = "User is not a member of the group";
 		console.log(`'POST' @ '/group/goal': ${error}`);
-		res.status(401).json({ error });
+		res.status(StatusCode.UNAUTHORIZED).json({ error });
 		return;
 	}
 
@@ -99,11 +100,11 @@ router.post("/", async (req: Request, res: Response) => {
 	if (!parsedResponse.success) {
 		const error = `Failed to parse response body at 'POST' for '/group/goal'`;
 		console.log(error + ": ", parsedResponse.issues);
-		res.status(500).json({ error });
+		res.status(StatusCode.INTERNAL_SERVER_ERROR).json({ error });
 		return;
 	}
 
-	res.status(200).json(parsedResponse.output);
+	res.status(StatusCode.CREATED).json(parsedResponse.output);
 });
 
 //Delete goal.
@@ -116,7 +117,7 @@ router.delete("/", async (req: Request, res: Response) => {
 	if (!parsedBody.success) {
 		const error = "Failed to parse request body";
 		console.log(`'DELETE' @ '/group/goal': ${error}`);
-		res.status(404).json({ error });
+		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
 
@@ -124,17 +125,18 @@ router.delete("/", async (req: Request, res: Response) => {
 		goalIds: parsedBody.output.goalId,
 	});
 
+	//TODO: Tror måske vi skal ændre mange BAD_REQUEST til NOT_FOUND? Måske
 	if (!group) {
 		const error = "Failed to find group";
 		console.log(`'DELETE' @ '/group/goal': ${error}`);
-		res.status(404).json({ error });
+		res.status(StatusCode.NOT_FOUND).json({ error });
 		return;
 	}
 
 	if (!group.userIds.includes(req.userId)) {
 		const error = "User not in group";
 		console.log(`'DELETE' @ '/group/goal': ${error}`);
-		res.status(401).json({ error });
+		res.status(StatusCode.UNAUTHORIZED).json({ error });
 		return;
 	}
 
@@ -145,5 +147,5 @@ router.delete("/", async (req: Request, res: Response) => {
 
 	await GoalModel.findByIdAndDelete(parsedBody.output.goalId);
 
-	res.sendStatus(200);
+	res.sendStatus(StatusCode.BAD_REQUEST);
 });

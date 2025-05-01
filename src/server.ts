@@ -33,12 +33,13 @@ export async function createServer(mongoUri: string) {
 	});
 
 	process.on("SIGINT", async () => {
-		await MG.connection.close();
+		server.close();
+		await MG.disconnect();
 		process.exit(0);
 	});
 
 	return async () => {
-		await server.close();
-		await MG.connection.close();
+		server.close();
+		await MG.disconnect();
 	};
 }

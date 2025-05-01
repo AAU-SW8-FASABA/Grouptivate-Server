@@ -1,7 +1,7 @@
 import assert from "node:assert";
-import { test, beforeEach, afterEach } from "node:test";
+import { test, before, beforeEach, after } from "node:test";
 import crypto from "node:crypto";
-import { start, end } from "./setup";
+import { start, end, clearDatabase } from "./setup";
 
 import {
 	UserCreateRequestSchema,
@@ -15,13 +15,16 @@ import { fetchApi, RequestMethod } from "./fetch";
 import { StatusCode } from "../src/dbEnums";
 import UserModel from "../src/models/UserModel";
 import SessionModel from "../src/models/SessionModel";
-import { response } from "express";
 
-beforeEach(async () => {
+before(async () => {
 	await start();
 });
 
-afterEach(async () => {
+beforeEach(async () => {
+	await clearDatabase();
+});
+
+after(async () => {
 	await end();
 });
 
@@ -38,14 +41,14 @@ test("POST @ user: can create user", async () => {
 		},
 	});
 
-	assert(parsed.success);
+	assert(parsed.success, "Response should parse");
 	assert.strictEqual(response.status, StatusCode.CREATED);
 
-	const users = await UserModel.find();
-	assert.strictEqual(users.length, 1);
+	const users = await UserModel.countDocuments();
+	assert.strictEqual(users, 1, "Only a single user should exist");
 
-	const sessions = await SessionModel.find();
-	assert.strictEqual(sessions.length, 1);
+	const sessions = await SessionModel.countDocuments();
+	assert.strictEqual(sessions, 1, "Only a single session should exist");
 });
 
 test("POST @ user: cannot create user with duplicate name", async () => {
@@ -61,8 +64,16 @@ test("POST @ user: cannot create user with duplicate name", async () => {
 		},
 	});
 
-	assert.strictEqual(parsed1.success, true);
-	assert.strictEqual(response1.status, StatusCode.CREATED);
+	assert.strictEqual(
+		parsed1.success,
+		true,
+		"Create user response should parse",
+	);
+	assert.strictEqual(
+		response1.status,
+		StatusCode.CREATED,
+		"Create user status code should be 200 OK",
+	);
 
 	const [response2, parsed2] = await fetchApi({
 		path: "/user",
@@ -76,14 +87,27 @@ test("POST @ user: cannot create user with duplicate name", async () => {
 		},
 	});
 
-	assert.strictEqual(parsed2.success, false);
-	assert.strictEqual(response2.status, StatusCode.CONFLICT);
+	assert.strictEqual(
+		parsed2.success,
+		false,
+		"Create user with existing name response should not parse",
+	);
+	assert.strictEqual(
+		response2.status,
+		StatusCode.CONFLICT,
+		"Create user with existing name status code should be 409 CONFLICT",
+	);
 
-	const users = await UserModel.find();
-	assert.strictEqual(users.length, 1);
+	const users = await UserModel.countDocuments();
+	assert.strictEqual(users, 1),
+		"When failing user creation, a user should not be created";
 
-	const sessions = await SessionModel.find();
-	assert.strictEqual(sessions.length, 1);
+	const sessions = await SessionModel.countDocuments();
+	assert.strictEqual(
+		sessions,
+		1,
+		"When failing user creation, a new session should not be created",
+	);
 });
 
 test("GET @ user: it is possible to get a user", async (t) => {
@@ -118,9 +142,17 @@ test("GET @ user: it is possible to get a user", async (t) => {
 		requestBody: undefined,
 	});
 
-	assert(getUserBody.success);
-	assert.strictEqual(getUserResponse.status, StatusCode.OK);
-	assert.strictEqual(getUserBody.output.name, username);
+	assert(getUserBody.success, "Get user body should be parsed");
+	assert.strictEqual(
+		getUserResponse.status,
+		StatusCode.OK,
+		"Get user body should return status code 200",
+	);
+	assert.strictEqual(
+		getUserBody.output.name,
+		username,
+		"The returned username should be the same as the one used during creation",
+	);
 });
 
 test("GET @ user: impossible to get user with invalid token", async (t) => {
@@ -155,11 +187,18 @@ test("GET @ user: impossible to get user with invalid token", async (t) => {
 		requestBody: undefined,
 	});
 
-	assert(!getUserBody.success);
-	assert.strictEqual(getUserResponse.status, StatusCode.UNAUTHORIZED);
+	assert(
+		!getUserBody.success,
+		"The response body should not parse when the request fails",
+	);
+	assert.strictEqual(
+		getUserResponse.status,
+		StatusCode.UNAUTHORIZED,
+		"Using an invalid token should give status code 401 UNAUTHORIZED",
+	);
 });
 
-test("GET @ user/verify: can verify valid token", async (t) => {
+test("POST @ user/verify: can verify valid token", async (t) => {
 	const [createUserResponse, createUserBody] = await fetchApi({
 		path: "/user",
 		method: RequestMethod.POST,
@@ -189,10 +228,14 @@ test("GET @ user/verify: can verify valid token", async (t) => {
 		requestBody: undefined,
 	});
 
-	assert.strictEqual(verifyResponse.status, StatusCode.OK);
+	assert.strictEqual(
+		verifyResponse.status,
+		StatusCode.OK,
+		"Using a valid session token should return 200 OK",
+	);
 });
 
-test("GET @ user/verify: can not verify invalid token", async (t) => {
+test("POST @ user/verify: can not verify invalid token", async (t) => {
 	const [createUserResponse, createUserBody] = await fetchApi({
 		path: "/user",
 		method: RequestMethod.POST,
@@ -222,7 +265,11 @@ test("GET @ user/verify: can not verify invalid token", async (t) => {
 		requestBody: undefined,
 	});
 
-	assert.strictEqual(verifyResponse.status, StatusCode.UNAUTHORIZED);
+	assert.strictEqual(
+		verifyResponse.status,
+		StatusCode.UNAUTHORIZED,
+		"Using an invalid session token should return status code 401 UNAUTHORIZED",
+	);
 });
 
 test("POST @ user/login: incorrect username must fail", async (t) => {
@@ -359,11 +406,9 @@ test("POST @ user/login: can login and has only one session token", async (t) =>
 		"User ids must be the same",
 	);
 
-	const sessions = await SessionModel.find({
-		userId: createBody.output.userId,
-	});
+	const sessions = await SessionModel.countDocuments();
 	assert.strictEqual(
-		sessions.length,
+		sessions,
 		1,
 		"Every user must only have a single active session",
 	);

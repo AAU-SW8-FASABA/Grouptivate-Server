@@ -34,7 +34,7 @@ router.post("/", async (req: Request, res: Response) => {
 	if (!parsedBody.success) {
 		const error = `Failed to parse input for 'post' request to '/user'`;
 		console.log(error + ": ", parsedBody.issues);
-		res.status(400).json({ error });
+		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
 
@@ -54,7 +54,9 @@ router.post("/", async (req: Request, res: Response) => {
 
 	// If the insert failed, the user already exists
 	if (!insertResult.upsertedId) {
-		res.status(409).json({ error: "User with this name already exists" });
+		res.status(StatusCode.CONFLICT).json({
+			error: "User with this name already exists",
+		});
 		return;
 	}
 
@@ -77,11 +79,11 @@ router.post("/", async (req: Request, res: Response) => {
 	if (!parsedResponse.success) {
 		const error = `Failed to parse response body at 'POST' for '/user'`;
 		console.log(error + ": ", parsedResponse.issues);
-		res.status(500).json({ error });
+		res.status(StatusCode.INTERNAL_SERVER_ERROR).json({ error });
 		return;
 	}
 
-	res.status(201).json(parsedResponse.output);
+	res.status(StatusCode.CREATED).json(parsedResponse.output);
 });
 
 // Get user information.
@@ -92,7 +94,7 @@ router.get("/", async (req: Request, res: Response) => {
 	if (!user) {
 		const error = `User not found`;
 		console.log(error);
-		res.status(404).json({ error });
+		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
 
@@ -122,17 +124,17 @@ router.get("/", async (req: Request, res: Response) => {
 	if (!parsedResponse.success) {
 		const error = `Failed to parse response body at 'GET' for '/user'`;
 		console.log(error + ": ", parsedResponse.issues);
-		res.status(500).json({ error });
+		res.status(StatusCode.INTERNAL_SERVER_ERROR).json({ error });
 		return;
 	}
 
 	// Send response
-	res.status(200).json(parsedResponse.output);
+	res.status(StatusCode.OK).json(parsedResponse.output);
 });
 
 // The session token has already been verified by the middleware
 router.post("/verify", async (req: Request, res: Response) => {
-	res.sendStatus(200);
+	res.sendStatus(StatusCode.OK);
 });
 
 router.post("/login", async (req: Request, res: Response) => {

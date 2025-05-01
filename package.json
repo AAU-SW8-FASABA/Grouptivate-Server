@@ -8,7 +8,7 @@
     "author": "",
     "license": "MIT",
     "scripts": {
-        "test": "tsx --test test/*.test.ts",
+        "test": "tsx --test --test-concurrency=1 test/*.test.ts",
         "prod": "dotenvx run -- npx tsx index.ts",
         "dev": "dotenvx run -- npx tsx index.ts",
         "format": "prettier --ignore-path .gitignore --write \"./\""
