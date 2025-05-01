@@ -12,7 +12,9 @@ type ParamsReturnType<
 	[K in keyof T]: v.SafeParseResult<T[K]>;
 };
 
-function typedEntries<T extends object>(obj: T): [keyof T, T[keyof T]][] {
+export function typedEntries<T extends object>(
+	obj: T,
+): [keyof T, T[keyof T]][] {
 	return Object.entries(obj) as [keyof T, T[keyof T]][];
 }
 
