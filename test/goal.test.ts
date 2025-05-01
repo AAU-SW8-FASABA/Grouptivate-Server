@@ -4,18 +4,12 @@ import { start, end, clearDatabase } from "./setup";
 import { fetchApi, RequestMethod } from "./fetch";
 
 import {
-	GroupCreateRequestSchema,
-	GroupGetRequestSchema,
-	GroupRemoveRequestSchema,
-} from "../Grouptivate-API/schemas/Group";
-import { GoalDeleteRequestSchema } from "../Grouptivate-API/schemas/Goal";
-import {
-	GoalCreateRequestSchema,
-	GoalType,
+	GoalDeleteRequestSchema,
+	GoalPatchRequestSchema,
 } from "../Grouptivate-API/schemas/Goal";
+import { GoalType } from "../Grouptivate-API/schemas/Goal";
 import { Interval } from "../Grouptivate-API/schemas/Interval";
 import GroupModel from "../src/models/GroupModel";
-import UserModel from "../src/models/UserModel";
 import { StatusCode } from "../src/dbEnums";
 import { Metric } from "../Grouptivate-API/schemas/Metric";
 import {
@@ -46,12 +40,7 @@ test("POST @ group/goal: can create individual goal", async (t) => {
 	const user = await createUser(t, "testUser1", "testPassword1");
 	if (!user) return;
 
-	const group = await createGroup(
-		t,
-		"TestGroup1",
-		Interval.Daily,
-		user.token,
-	);
+	const group = await createGroup(t, user.token);
 	if (!group) return;
 
 	const type = GoalType.Individual;
@@ -117,20 +106,16 @@ test("POST @ group/goal: can create group goal", async (t) => {
 	const user2 = await createUser(t, "testUser2");
 	if (!user2) return;
 
-	const group = await createGroup(
-		t,
-		"TestGroup1",
-		Interval.Daily,
-		user1.token,
-	);
+	const group = await createGroup(t, user1.token);
 	if (!group) return;
 
-	const inviteId = await inviteAcceptFlow(
+	const inviteSuccess = await inviteAcceptFlow(
 		t,
-		{ ...user2 },
-		{ ...user1 },
+		user2,
+		user1,
 		group.groupId,
 	);
+	if (!inviteSuccess) return;
 
 	const type = GoalType.Group;
 	const title = "TestGoal";
@@ -193,7 +178,7 @@ test("DELETE @ group/goal: can delete own individual goal", async (t) => {
 	const user = await createUser(t);
 	if (!user) return;
 
-	const group = await createGroup(t, "testGroup", Interval.Daily, user.token);
+	const group = await createGroup(t, user.token);
 	if (!group) return;
 
 	const goal = await createGoal({
@@ -240,12 +225,7 @@ test("DELETE @ group/goal: can delete someone elses individual goal", async (t) 
 	const user2 = await createUser(t, "testName2");
 	if (!user2) return;
 
-	const group = await createGroup(
-		t,
-		"testGroup",
-		Interval.Daily,
-		user1.token,
-	);
+	const group = await createGroup(t, user1.token);
 	if (!group) return;
 
 	const goal = await createGoal({
@@ -261,12 +241,13 @@ test("DELETE @ group/goal: can delete someone elses individual goal", async (t) 
 	});
 	if (!goal) return;
 
-	await inviteAcceptFlow(
+	const inviteSuccess = await inviteAcceptFlow(
 		t,
-		{ userName: user2.userName, userId: user2.userId, token: user2.token },
-		{ userName: user1.userName, userId: user1.userId, token: user1.token },
+		user2,
+		user1,
 		group.groupId,
 	);
+	if (!inviteSuccess) return;
 
 	const [deleteGoalResponse] = await fetchApi({
 		path: "/group/goal",
@@ -299,12 +280,7 @@ test("DELETE @ group/goal: can not delete a goal if not in the group", async (t)
 	const user2 = await createUser(t, "testName2");
 	if (!user2) return;
 
-	const group = await createGroup(
-		t,
-		"testGroup",
-		Interval.Daily,
-		user1.token,
-	);
+	const group = await createGroup(t, user1.token);
 	if (!group) return;
 
 	const goal = await createGoal({
@@ -348,7 +324,7 @@ test("DELETE @ group/goal: can delete a group goal", async (t) => {
 	const user = await createUser(t);
 	if (!user) return;
 
-	const group = await createGroup(t, "testGroup", Interval.Daily, user.token);
+	const group = await createGroup(t, user.token);
 	if (!group) return;
 
 	const goal = await createGoal({
@@ -386,4 +362,182 @@ test("DELETE @ group/goal: can delete a group goal", async (t) => {
 		goalsAfterDelete.length === 0,
 		"The only goal was deleted but still exists in database",
 	);
+});
+
+test("PATCH @ group/goal: can patch individual goal", async (t) => {
+	const user = await createUser(t);
+	if (!user) return;
+
+	const group = await createGroup(t, user.token);
+	if (!group) return;
+
+	const goal = await createGoal({
+		t,
+		type: GoalType.Individual,
+		groupId: group.groupId,
+		userId: user.userId,
+		token: user.token,
+	});
+	if (!goal) return;
+
+	const [patchGoalResponse] = await fetchApi({
+		path: "/group/goal",
+		method: RequestMethod.PATCH,
+		schema: GoalPatchRequestSchema,
+		token: user.token,
+		searchParams: {},
+		requestBody: [{ goalId: goal.goalId, progress: 100_000_000 }],
+	});
+
+	assert(patchGoalResponse.status === StatusCode.OK);
+
+	const goalObject = await GoalModel.findById(goal.goalId);
+	assert(goalObject !== null, "Goal should not be null");
+	assert(
+		goalObject.progress.get(user.userId) !== undefined,
+		"Progress map should contain progress for the specific user",
+	);
+	assert(
+		goalObject.progress.get(user.userId) === 100_000_000,
+		"Progress should be updated",
+	);
+});
+
+test("PATCH @ group/goal: can patch group goal", async (t) => {
+	const user = await createUser(t);
+	if (!user) return;
+
+	const group = await createGroup(t, user.token);
+	if (!group) return;
+
+	const goal = await createGoal({
+		t,
+		type: GoalType.Group,
+		groupId: group.groupId,
+		userId: user.userId,
+		token: user.token,
+	});
+	if (!goal) return;
+
+	const [patchGoalResponse] = await fetchApi({
+		path: "/group/goal",
+		method: RequestMethod.PATCH,
+		schema: GoalPatchRequestSchema,
+		token: user.token,
+		searchParams: {},
+		requestBody: [{ goalId: goal.goalId, progress: 100_000_000 }],
+	});
+
+	assert(patchGoalResponse.status === StatusCode.OK);
+
+	const goalObject = await GoalModel.findById(goal.goalId);
+	assert(goalObject !== null, "Goal should not be null");
+	assert(
+		goalObject.progress.get(user.userId) !== undefined,
+		"Progress map should contain progress for the specific user",
+	);
+	assert(
+		goalObject.progress.get(user.userId) === 100_000_000,
+		"Progress should be updated",
+	);
+});
+
+test("PATCH @ group/goal: cannot patch other persons individual goal", async (t) => {
+	const user = await createUser(t);
+	if (!user) return;
+
+	const user2 = await createUser(t, "someOtherUsername");
+	if (!user2) return;
+
+	const group = await createGroup(t, user.token);
+	if (!group) return;
+
+	const goal = await createGoal({
+		t,
+		type: GoalType.Individual,
+		groupId: group.groupId,
+		userId: user.userId,
+		token: user.token,
+	});
+	if (!goal) return;
+
+	const inviteSuccess = await inviteAcceptFlow(t, user2, user, group.groupId);
+	if (!inviteSuccess) return;
+
+	const [patchGoalResponse] = await fetchApi({
+		path: "/group/goal",
+		method: RequestMethod.PATCH,
+		schema: GoalPatchRequestSchema,
+		token: user2.token,
+		searchParams: {},
+		requestBody: [{ goalId: goal.goalId, progress: 100_000_000 }],
+	});
+
+	assert(patchGoalResponse.status === StatusCode.FORBIDDEN);
+
+	const goalObject = await GoalModel.findById(goal.goalId);
+	assert(goalObject !== null, "Goal should not be null");
+	assert(
+		goalObject.progress.get(user.userId) === 0,
+		"Progress should not be changes",
+	);
+});
+
+test("PATCH @ group/goal: cannot patch goal of other groups", async (t) => {
+	const user1 = await createUser(t);
+	if (!user1) return;
+
+	const user2 = await createUser(t, "someOtherUsername");
+	if (!user2) return;
+
+	const group = await createGroup(t, user1.token);
+	if (!group) return;
+
+	const goal = await createGoal({
+		t,
+		groupId: group.groupId,
+		userId: user1.userId,
+		token: user1.token,
+	});
+	if (!goal) return;
+
+	const [patchGoalResponse] = await fetchApi({
+		path: "/group/goal",
+		method: RequestMethod.PATCH,
+		schema: GoalPatchRequestSchema,
+		token: user2.token,
+		searchParams: {},
+		requestBody: [{ goalId: goal.goalId, progress: 100_000_000 }],
+	});
+
+	assert(patchGoalResponse.status === StatusCode.FORBIDDEN);
+
+	const goalObject = await GoalModel.findById(goal.goalId);
+
+	assert(goalObject !== null, "Goal should not be null");
+	assert(
+		goalObject.progress.get(user1.userId) === 0,
+		"Progress should not be updated",
+	);
+});
+
+test("PATCH @ group/goal: cannot patch nonexistent goals", async (t) => {
+	const user = await createUser(t);
+	if (!user) return;
+
+	const group = await createGroup(t, user.token);
+	if (!group) return;
+
+	const [patchGoalResponse] = await fetchApi({
+		path: "/group/goal",
+		method: RequestMethod.PATCH,
+		schema: GoalPatchRequestSchema,
+		token: user.token,
+		searchParams: {},
+		requestBody: [
+			{ goalId: "123456789012345678901234", progress: 100_000_000 },
+		],
+	});
+
+	assert(patchGoalResponse.status === StatusCode.NOT_FOUND);
 });

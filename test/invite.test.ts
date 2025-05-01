@@ -45,20 +45,11 @@ test("POST @ group/invite: can create an invitation", async (t) => {
 	const user2 = await createUser(t, userName2);
 	if (!user2) return;
 
-	const group = await createGroup(
-		t,
-		"testGroup",
-		Interval.Daily,
-		user1.token,
-	);
+	const group = await createGroup(t, user1.token);
 	if (!group) return;
 
-	await invite(
-		t,
-		{ userName: userName2, userId: user2.userId, token: user2.token },
-		{ userName: userName1, userId: user1.userId, token: user1.token },
-		group.groupId,
-	);
+	const inviteSuccess = await invite(t, user2, user1, group.groupId);
+	if (!inviteSuccess) return;
 
 	const invites = await InviteModel.find();
 
@@ -83,16 +74,11 @@ test("GET @ group/invite: can get group invitations", async (t) => {
 	const user2 = await createUser(t, userName2);
 	if (!user2) return;
 
-	const groupName = "testGroup";
-	const group = await createGroup(t, groupName, Interval.Daily, user1.token);
+	const group = await createGroup(t, user1.token);
 	if (!group) return;
 
-	await invite(
-		t,
-		{ userName: userName2, userId: user2.userId, token: user2.token },
-		{ userName: userName1, userId: user1.userId, token: user1.token },
-		group.groupId,
-	);
+	const inviteSuccess = await invite(t, user2, user1, group.groupId);
+	if (!inviteSuccess) return;
 
 	const [getInvitesResponse, getInvitesBody] = await fetchApi({
 		path: "/group/invite",
@@ -114,7 +100,7 @@ test("GET @ group/invite: can get group invitations", async (t) => {
 		"Not invited to exactly 1 group",
 	);
 	assert(
-		getInvitesBody.output[0].groupName === groupName,
+		getInvitesBody.output[0].groupName === group.name,
 		"Invited group has incorrect group name",
 	);
 	assert(
@@ -132,16 +118,11 @@ test("DELETE @ group/invite: can delete an invitation", async (t) => {
 	const user2 = await createUser(t, userName2);
 	if (!user2) return;
 
-	const groupName = "testGroup";
-	const group = await createGroup(t, groupName, Interval.Daily, user1.token);
+	const group = await createGroup(t, user1.token);
 	if (!group) return;
 
-	await invite(
-		t,
-		{ userName: userName2, userId: user2.userId, token: user2.token },
-		{ userName: userName1, userId: user1.userId, token: user1.token },
-		group.groupId,
-	);
+	const inviteSuccess = await invite(t, user2, user1, group.groupId);
+	if (!inviteSuccess) return;
 
 	const invitesBeforeDelete = await InviteModel.find();
 
@@ -173,16 +154,11 @@ test("DELETE @ group/invite: user outside of group cannot delete an invitation",
 	const user2 = await createUser(t, userName2);
 	if (!user2) return;
 
-	const groupName = "testGroup";
-	const group = await createGroup(t, groupName, Interval.Daily, user1.token);
+	const group = await createGroup(t, user1.token);
 	if (!group) return;
 
-	await invite(
-		t,
-		{ userName: userName2, userId: user2.userId, token: user2.token },
-		{ userName: userName1, userId: user1.userId, token: user1.token },
-		group.groupId,
-	);
+	const inviteSuccess = await invite(t, user2, user1, group.groupId);
+	if (!inviteSuccess) return;
 
 	const invitesBeforeDelete = await InviteModel.find();
 
@@ -214,12 +190,7 @@ test("POST @ group/invite/respond: can accept an invitation and be in existing g
 	const user2 = await createUser(t, userName2);
 	if (!user2) return;
 
-	const group = await createGroup(
-		t,
-		"testGroup",
-		Interval.Daily,
-		user1.token,
-	);
+	const group = await createGroup(t, user1.token);
 	if (!group) return;
 
 	const goal = await createGoal({
@@ -235,12 +206,13 @@ test("POST @ group/invite/respond: can accept an invitation and be in existing g
 	});
 	if (!goal) return;
 
-	await inviteAcceptFlow(
+	const inviteSuccess = await inviteAcceptFlow(
 		t,
-		{ userName: userName2, userId: user2.userId, token: user2.token },
-		{ userName: userName1, userId: user1.userId, token: user1.token },
+		user2,
+		user1,
 		group.groupId,
 	);
+	if (!inviteSuccess) return;
 
 	const goals = await GoalModel.find();
 
@@ -264,12 +236,7 @@ test("POST @ group/invite/respond: can decline an invitation and not be in the g
 	const user2 = await createUser(t, userName2);
 	if (!user2) return;
 
-	const group = await createGroup(
-		t,
-		"testGroup",
-		Interval.Daily,
-		user1.token,
-	);
+	const group = await createGroup(t, user1.token);
 	if (!group) return;
 
 	const goal = await createGoal({
@@ -285,12 +252,13 @@ test("POST @ group/invite/respond: can decline an invitation and not be in the g
 	});
 	if (!goal) return;
 
-	await inviteDeclineFlow(
+	const inviteSuccess = await inviteDeclineFlow(
 		t,
 		{ userName: userName2, userId: user2.userId, token: user2.token },
 		{ userName: userName1, userId: user1.userId, token: user1.token },
 		group.groupId,
 	);
+	if (!inviteSuccess) return;
 
 	const groupObject = await GroupModel.find();
 
@@ -313,16 +281,11 @@ test("POST @ group/invite/respond: another user cannot accept the invitation", a
 	const user2 = await createUser(t, userName2);
 	if (!user2) return;
 
-	const groupName = "testGroup";
-	const group = await createGroup(t, groupName, Interval.Daily, user1.token);
+	const group = await createGroup(t, user1.token);
 	if (!group) return;
 
-	await invite(
-		t,
-		{ userName: userName2, userId: user2.userId, token: user2.token },
-		{ userName: userName1, userId: user1.userId, token: user1.token },
-		group.groupId,
-	);
+	const inviteSuccess = await invite(t, user2, user1, group.groupId);
+	if (!inviteSuccess) return;
 
 	const invites = await InviteModel.find();
 

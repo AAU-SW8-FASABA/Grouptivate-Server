@@ -14,11 +14,6 @@ const UserSchema = new MG.Schema({
 		type: String,
 		required: true,
 	},
-	lastSync: {
-		type: [String],
-		required: true,
-		description: "TODO",
-	},
 });
 
 const UserModel = MG.model(CollectionEnum.User, UserSchema);

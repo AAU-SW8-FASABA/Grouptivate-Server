@@ -25,10 +25,7 @@ export const router = express.Router();
 router.use("/invite", inviteRouter);
 router.use("/goal", goalRouter);
 
-// TODO: .get("s") altså groups i flertal så man ikke skal spamme for hver group!!!
 // TODO: Increment streak
-// TODO: Patch
-// TODO: How does the group get their outstanding invitations so that they can delete?
 
 router.post("/", async (req: Request, res: Response) => {
 	const parsedBody = v.safeParse(
@@ -54,7 +51,7 @@ router.post("/", async (req: Request, res: Response) => {
 
 	// Insert group in user's db entry
 	await UserModel.updateOne(
-		{ _id: new MG.Types.ObjectId(req.userId) },
+		{ _id: req.userId },
 		{ $push: { groupIds: group._id } },
 	);
 
@@ -106,9 +103,8 @@ router.get("/", async (req: Request, res: Response) => {
 	}
 
 	// Fetch goals
-	const goalObjectIDs = group.goalIds.map((v) => new MG.Types.ObjectId(v));
 	const goals = await GoalModel.find({
-		_id: { $in: goalObjectIDs },
+		_id: { $in: group.goalIds },
 	});
 
 	const userMap = await getUserMap(group.userIds);
@@ -180,26 +176,25 @@ router.post("/remove", async (req: Request, res: Response) => {
 	}
 
 	await GroupModel.updateOne(
-		{ _id: new MG.Types.ObjectId(parsedBody.output.groupId) },
+		{ _id: parsedBody.output.groupId },
 		{ $pull: { userIds: parsedBody.output.userId } },
 	);
 
 	await UserModel.updateOne(
-		{ _id: new MG.Types.ObjectId(parsedBody.output.userId) },
+		{ _id: parsedBody.output.userId },
 		{ $pull: { groupIds: parsedBody.output.groupId } },
 	);
 
 	// Delete group if it is empty else update progress
-	const goalObjectIDs = group.goalIds.map((id) => new MG.Types.ObjectId(id));
 	if (group.userIds.length - 1 === 0) {
 		await Promise.all([
-			GoalModel.deleteMany({ _id: { $in: goalObjectIDs } }),
+			GoalModel.deleteMany({ _id: { $in: group.goalIds } }),
 			GroupModel.findByIdAndDelete(group._id),
 		]);
 	} else {
 		const goals = await GoalModel.find({
 			_id: {
-				$in: goalObjectIDs,
+				$in: group.goalIds,
 			},
 		});
 

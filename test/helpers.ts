@@ -20,7 +20,6 @@ import {
 	InviteGetRequestSchema,
 	InviteRespondRequestSchema,
 } from "../Grouptivate-API/schemas/Invite";
-import { boolean } from "valibot";
 
 export async function createUser(
 	t: TestContext,
@@ -52,9 +51,9 @@ export async function createUser(
 
 export async function createGroup(
 	t: TestContext,
-	name: string,
-	interval: Interval,
 	token: string,
+	name: string = "groupName",
+	interval: Interval = Interval.Daily,
 ) {
 	const [createGroupResponse, createGroupBody] = await fetchApi({
 		path: "/group",
@@ -76,23 +75,29 @@ export async function createGroup(
 		return;
 	}
 
-	return createGroupBody.output;
+	return { name, interval, ...createGroupBody.output };
 }
 
 interface GoalCreateType {
 	t: TestContext;
 	groupId: string;
 	userId: string;
-	type: GoalType;
-	title: string;
-	activity: SportActivity | OtherActivity;
-	metric: Metric;
-	target: number;
 	token: string;
+	type?: GoalType;
+	title?: string;
+	activity?: SportActivity | OtherActivity;
+	metric?: Metric;
+	target?: number;
 	failOnError?: boolean;
 }
 
 export async function createGoal(_: GoalCreateType) {
+	const type = _.type ?? GoalType.Group;
+	const title = _.title ?? "goalTitle";
+	const activity = _.activity ?? SportActivity.Wheelchair;
+	const metric = _.metric ?? Metric.Calories;
+	const target = _.target ?? 1000;
+
 	const [createGoalResponse, createGoalBody] = await fetchApi({
 		path: "/group/goal",
 		method: RequestMethod.POST,
@@ -103,11 +108,11 @@ export async function createGoal(_: GoalCreateType) {
 			userId: _.userId,
 		},
 		requestBody: {
-			type: _.type,
-			title: _.title,
-			activity: _.activity,
-			metric: _.metric,
-			target: _.target,
+			type,
+			title,
+			activity,
+			metric,
+			target,
 		},
 	});
 
@@ -122,7 +127,15 @@ export async function createGoal(_: GoalCreateType) {
 		return;
 	}
 
-	return createGoalBody.output;
+	return {
+		...createGoalBody.output,
+		..._,
+		type,
+		title,
+		activity,
+		metric,
+		target,
+	};
 }
 
 export async function inviteAcceptFlow(
@@ -130,7 +143,7 @@ export async function inviteAcceptFlow(
 	invitee: { userName: string; userId: string; token: string },
 	inviter: { userName: string; userId: string; token: string },
 	groupId: string,
-) {
+): Promise<boolean> {
 	const [postInviteResponse] = await fetchApi({
 		path: "/group/invite",
 		method: RequestMethod.POST,
@@ -145,7 +158,7 @@ export async function inviteAcceptFlow(
 
 	if (postInviteResponse.status !== StatusCode.OK) {
 		t.skip(`Skipped ${t.name} due to failed invite creation request`);
-		return;
+		return false;
 	}
 
 	const [getInviteResponse, getInviteBody] = await fetchApi({
@@ -163,7 +176,7 @@ export async function inviteAcceptFlow(
 		getInviteBody.output.length < 1
 	) {
 		t.skip(`Skipped ${t.name} due to failed invite get request`);
-		return;
+		return false;
 	}
 
 	const [acceptInviteResponse] = await fetchApi({
@@ -179,8 +192,10 @@ export async function inviteAcceptFlow(
 
 	if (acceptInviteResponse.status !== StatusCode.OK) {
 		t.skip(`Skipped ${t.name} due to failed invite respond request failed`);
-		return;
+		return false;
 	}
+
+	return true;
 }
 
 export async function inviteDeclineFlow(
@@ -188,7 +203,7 @@ export async function inviteDeclineFlow(
 	invitee: { userName: string; userId: string; token: string },
 	inviter: { userName: string; userId: string; token: string },
 	groupId: string,
-) {
+): Promise<boolean> {
 	const [postInviteResponse] = await fetchApi({
 		path: "/group/invite",
 		method: RequestMethod.POST,
@@ -203,7 +218,7 @@ export async function inviteDeclineFlow(
 
 	if (postInviteResponse.status !== StatusCode.OK) {
 		t.skip(`Skipped ${t.name} due to failed invite creation request`);
-		return;
+		return false;
 	}
 
 	const [getInviteResponse, getInviteBody] = await fetchApi({
@@ -221,7 +236,7 @@ export async function inviteDeclineFlow(
 		getInviteBody.output.length < 1
 	) {
 		t.skip(`Skipped ${t.name} due to failed invite get request`);
-		return;
+		return false;
 	}
 
 	const [acceptInviteResponse] = await fetchApi({
@@ -237,8 +252,10 @@ export async function inviteDeclineFlow(
 
 	if (acceptInviteResponse.status !== StatusCode.OK) {
 		t.skip(`Skipped ${t.name} due to failed invite respond request failed`);
-		return;
+		return false;
 	}
+
+	return true;
 }
 
 export async function invite(
@@ -246,7 +263,7 @@ export async function invite(
 	invitee: { userName: string; userId: string; token: string },
 	inviter: { userName: string; userId: string; token: string },
 	groupId: string,
-) {
+): Promise<boolean> {
 	const [postInviteResponse] = await fetchApi({
 		path: "/group/invite",
 		method: RequestMethod.POST,
@@ -261,6 +278,8 @@ export async function invite(
 
 	if (postInviteResponse.status !== StatusCode.OK) {
 		t.skip(`Skipped ${t.name} due to failed invite creation request`);
-		return;
+		return false;
 	}
+
+	return true;
 }

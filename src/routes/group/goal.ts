@@ -10,6 +10,9 @@ import GroupModel from "../../models/GroupModel";
 import GoalModel from "../../models/GoalModel";
 import { getParsedSearchParams } from "../../helpers/searchParamHelpers";
 import { StatusCode } from "../../dbEnums";
+import UserModel from "../../models/UserModel";
+
+import MG from "mongoose";
 
 export const router = express.Router();
 
@@ -146,4 +149,70 @@ router.delete("/", async (req: Request, res: Response) => {
 	await GoalModel.findByIdAndDelete(parsedBody.output.goalId);
 
 	res.sendStatus(StatusCode.NO_CONTENT);
+});
+
+router.patch("/", async (req: Request, res: Response) => {
+	const parsedBody = v.safeParse(
+		GoalPatchRequestSchema.requestBody,
+		req.body,
+	);
+
+	if (!parsedBody.success) {
+		const error = "Failed to parse request body";
+		console.log(`'PATCH' @ '/group/goal': ${error}`);
+		res.status(StatusCode.BAD_REQUEST).json({ error });
+		return;
+	}
+
+	// Check if the user is part of the given groups
+	const goalIds = parsedBody.output.map((elem) => elem.goalId);
+	const groups = await GroupModel.find({
+		goalIds: { $in: goalIds },
+	});
+
+	const userIsPartOfAllGroups = groups.every((group) =>
+		group.userIds.includes(req.userId),
+	);
+
+	if (!userIsPartOfAllGroups) {
+		const error = "User is not part of all corresponding groups";
+		console.log(`'PATCH' @ '/group/goal': ${error}`);
+		res.status(StatusCode.FORBIDDEN).json({ error });
+		return;
+	}
+
+	// Check if all goals exist
+	const goals = await GoalModel.find({
+		_id: { $in: goalIds },
+	});
+
+	if (goals.length !== goalIds.length) {
+		const error = "List contains invalid goals";
+		console.log(`'PATCH' @ '/group/goal': ${error}`);
+		res.status(StatusCode.NOT_FOUND).json({ error });
+		return;
+	}
+
+	// Make sure that the user does not attempt to update an individual goal that does not belong to them
+	for (const goal of goals) {
+		if (goal.type === GoalType.Group) continue;
+		if (goal.progress.get(req.userId) === undefined) {
+			const error =
+				"User attempted to patch an individual goal that do not belong to them";
+			console.log(`'PATCH' @ '/group/goal': ${error}`);
+			res.status(StatusCode.FORBIDDEN).json({ error });
+			return;
+		}
+	}
+
+	// Update the given goals
+	const progressUpdates = parsedBody.output.map(async (progressUpdate) => {
+		return await GoalModel.findByIdAndUpdate(progressUpdate.goalId, {
+			[`progress.${req.userId}`]: progressUpdate.progress,
+		});
+	});
+
+	await Promise.all(progressUpdates);
+
+	res.sendStatus(StatusCode.OK);
 });

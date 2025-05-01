@@ -5,6 +5,7 @@ import MG from "mongoose";
 
 import { router as userRouter } from "./routes/user";
 import { router as groupRouter } from "./routes/group";
+import { router as groupsRouter } from "./routes/groups";
 
 export async function createServer(mongoUri: string) {
 	try {
@@ -27,6 +28,7 @@ export async function createServer(mongoUri: string) {
 	});
 	app.use("/user", userRouter);
 	app.use("/group", groupRouter);
+	app.use("/groups", groupsRouter);
 
 	const server = app.listen(PORT, () => {
 		console.log(`Server is running on port ${PORT}`);

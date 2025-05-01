@@ -29,6 +29,7 @@
         "express": "^5.1.0",
         "mongodb": "6.15",
         "mongoose": "^8.13.2",
+        "node-cron": "^3.0.3",
         "valibot": "^1.0.0"
     },
     "repository": {

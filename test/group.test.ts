@@ -42,20 +42,18 @@ test("POST @ group: can create group", async (t) => {
 	const user = await createUser(t);
 	if (!user) return;
 
-	const groupName = "testGroup";
-	const groupInterval = Interval.Daily;
-	const group = await createGroup(t, groupName, groupInterval, user.token);
+	const group = await createGroup(t, user.token);
 	if (!group) return;
 
 	const groups = await GroupModel.find();
 
 	assert(groups.length === 1, "There is not exactly 1 group created");
 	assert(
-		groups[0].name === groupName,
+		groups[0].name === group.name,
 		"The group does not have the supplied name",
 	);
 	assert(
-		groups[0].interval === groupInterval,
+		groups[0].interval === group.interval,
 		"The group does not have the supplied interval",
 	);
 	assert(
@@ -147,9 +145,7 @@ test("GET @ group: can get valid group with group goal", async (t) => {
 	const user = await createUser(t, userName);
 	if (!user) return;
 
-	const groupName = "testGroup";
-	const groupInterval = Interval.Daily;
-	const group = await createGroup(t, groupName, groupInterval, user.token);
+	const group = await createGroup(t, user.token);
 	if (!group) return;
 
 	const type = GoalType.Group;
@@ -183,14 +179,14 @@ test("GET @ group: can get valid group with group goal", async (t) => {
 	assert(getGroupBody.success, "Parsing did not succeed");
 	assert(getGroupResponse.status === StatusCode.OK, "Incorrect status code");
 	assert(
-		getGroupBody.output.groupName === groupName,
+		getGroupBody.output.groupName === group.name,
 		"Unexpected group name after creating and getting",
 	);
 
 	const userMap = new Map(Object.entries(getGroupBody.output.users));
 
 	assert(
-		getGroupBody.output.interval === groupInterval,
+		getGroupBody.output.interval === group.interval,
 		"The group does not have the supplied interval",
 	);
 	assert(userMap.size === 1, "The group does not contain exactly 1 member");
@@ -246,9 +242,7 @@ test("GET @ group: can get valid group with individual goal", async (t) => {
 	const user = await createUser(t, userName);
 	if (!user) return;
 
-	const groupName = "testGroup";
-	const groupInterval = Interval.Daily;
-	const group = await createGroup(t, groupName, groupInterval, user.token);
+	const group = await createGroup(t, user.token);
 	if (!group) return;
 
 	const type = GoalType.Individual;
@@ -282,14 +276,14 @@ test("GET @ group: can get valid group with individual goal", async (t) => {
 	assert(getGroupBody.success, "Parsing did not succeed");
 	assert(getGroupResponse.status === StatusCode.OK, "Incorrect status code");
 	assert(
-		getGroupBody.output.groupName === groupName,
+		getGroupBody.output.groupName === group.name,
 		"Unexpected group name after creating and getting",
 	);
 
 	const userMap = new Map(Object.entries(getGroupBody.output.users));
 
 	assert(
-		getGroupBody.output.interval === groupInterval,
+		getGroupBody.output.interval === group.interval,
 		"The group does not have the supplied interval",
 	);
 	assert(userMap.size === 1, "The group does not contain exactly 1 member");
@@ -339,7 +333,7 @@ test("GET @ group: can not get invalid group", async (t) => {
 	const user = await createUser(t);
 	if (!user) return;
 
-	const group = await createGroup(t, "testGroup", Interval.Daily, user.token);
+	const group = await createGroup(t, user.token);
 	if (!group) return;
 
 	const [getGroupResponse, getGroupBody] = await fetchApi({
@@ -367,8 +361,7 @@ test("POST @ group/remove: remove user from group with one user", async (t) => {
 	const user = await createUser(t);
 	if (!user) return;
 
-	const groupName = "testGroup";
-	const group = await createGroup(t, groupName, Interval.Daily, user.token);
+	const group = await createGroup(t, user.token);
 	if (!group) return;
 
 	const [removeUserResponse, _] = await fetchApi({
@@ -406,8 +399,7 @@ test("POST @ group/remove: remove user from group with one user. Correctly delet
 	const user = await createUser(t);
 	if (!user) return;
 
-	const groupName = "testGroup";
-	const group = await createGroup(t, groupName, Interval.Daily, user.token);
+	const group = await createGroup(t, user.token);
 	if (!group) return;
 
 	const goal = await createGoal({
@@ -461,8 +453,7 @@ test("POST @ group/remove: remove user from group with one user. Correctly delet
 	const user = await createUser(t);
 	if (!user) return;
 
-	const groupName = "testGroup";
-	const group = await createGroup(t, groupName, Interval.Daily, user.token);
+	const group = await createGroup(t, user.token);
 	if (!group) return;
 
 	const goal = await createGoal({
@@ -521,20 +512,16 @@ test("POST @ group/remove: remove user from group with multiple users", async (t
 	const user2 = await createUser(t, userName2);
 	if (!user2) return;
 
-	const group = await createGroup(
-		t,
-		"testGroup",
-		Interval.Daily,
-		user1.token,
-	);
+	const group = await createGroup(t, user1.token);
 	if (!group) return;
 
-	await inviteAcceptFlow(
+	const inviteSuccess = await inviteAcceptFlow(
 		t,
-		{ userName: userName2, userId: user2.userId, token: user2.token },
-		{ userName: userName1, userId: user1.userId, token: user1.token },
+		user2,
+		user1,
 		group.groupId,
 	);
+	if (!inviteSuccess) return;
 
 	const [removeUserResponse, _] = await fetchApi({
 		path: "/group/remove",
@@ -590,20 +577,16 @@ test("POST @ group/remove: remove user from group with multiple users. Correctly
 	const user2 = await createUser(t, userName2);
 	if (!user2) return;
 
-	const group = await createGroup(
-		t,
-		"testGroup",
-		Interval.Daily,
-		user1.token,
-	);
+	const group = await createGroup(t, user1.token);
 	if (!group) return;
 
-	await inviteAcceptFlow(
+	const inviteSuccess = await inviteAcceptFlow(
 		t,
-		{ userName: userName2, userId: user2.userId, token: user2.token },
-		{ userName: userName1, userId: user1.userId, token: user1.token },
+		user2,
+		user1,
 		group.groupId,
 	);
+	if (!inviteSuccess) return;
 
 	const goal = await createGoal({
 		t,
@@ -682,20 +665,16 @@ test("POST @ group/remove: remove user from group with multiple users. Correctly
 	const user2 = await createUser(t, userName2);
 	if (!user2) return;
 
-	const group = await createGroup(
-		t,
-		"testGroup",
-		Interval.Daily,
-		user1.token,
-	);
+	const group = await createGroup(t, user1.token);
 	if (!group) return;
 
-	await inviteAcceptFlow(
+	const inviteSuccess = await inviteAcceptFlow(
 		t,
-		{ userName: userName2, userId: user2.userId, token: user2.token },
-		{ userName: userName1, userId: user1.userId, token: user1.token },
+		user2,
+		user1,
 		group.groupId,
 	);
+	if (!inviteSuccess) return;
 
 	const goal = await createGoal({
 		t,
