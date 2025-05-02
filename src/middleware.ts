@@ -35,3 +35,8 @@ export const authMiddleware: RequestHandler = async (req, res, next) => {
 	req.userId = session.userId;
 	next();
 };
+
+export const cacheMiddleware: RequestHandler = async (req, res, next) => {
+	res.set("Cache-Control", ["private"]);
+	next();
+};
