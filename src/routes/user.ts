@@ -39,7 +39,9 @@ router.post("/", async (req: Request, res: Response) => {
 			`${error}`,
 			parsedBody.issues.map((issue) => issue.message),
 		);
-		res.status(StatusCode.BAD_REQUEST).json({ error });
+		res.status(StatusCode.BAD_REQUEST).json({
+			error: parsedBody.issues.map((issue) => issue.message),
+		});
 		return;
 	}
 
