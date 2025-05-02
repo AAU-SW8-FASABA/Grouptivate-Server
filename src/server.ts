@@ -1,6 +1,8 @@
 import express, { type Request, type Response } from "express";
 import cors from "cors";
 import { authMiddleware } from "./middleware";
+
+import { MongoMemoryServer } from "mongodb-memory-server";
 import MG from "mongoose";
 
 import { router as userRouter } from "./routes/user";
@@ -53,4 +55,10 @@ export async function createServer(
 		server.close();
 		await MG.disconnect();
 	};
+}
+
+export async function setupLocalMongoDB(): Promise<MongoMemoryServer> {
+	return await MongoMemoryServer.create({
+		instance: { dbName: "Grouptivate" },
+	});
 }
