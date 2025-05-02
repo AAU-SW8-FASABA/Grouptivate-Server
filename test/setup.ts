@@ -1,16 +1,13 @@
 import { MongoMemoryServer } from "mongodb-memory-server";
 import MG from "mongoose";
-import { createServer } from "../src/server";
+import { createServer, setupLocalMongoDB } from "../src/server";
 
 let mongoServer: MongoMemoryServer | undefined;
 let serverStopFunc: () => Promise<void> | undefined;
 
 // Start database and server
 export async function start() {
-	mongoServer = await MongoMemoryServer.create({
-		instance: { dbName: "Grouptivate" },
-	});
-	if (!mongoServer) return;
+	mongoServer = await setupLocalMongoDB();
 	serverStopFunc = await createServer(mongoServer.getUri(), true);
 }
 
