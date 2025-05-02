@@ -34,7 +34,7 @@ router.post("/", async (req: Request, res: Response) => {
 
 	if (!parsedBody.success) {
 		const error = `Failed to parse input'`;
-		logRequest(req, `${error}`, parsedBody.issues);
+		logRequest(req, error);
 		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
@@ -145,7 +145,7 @@ router.post("/login", async (req: Request, res: Response) => {
 
 	if (!parsedRequest.success) {
 		const error = `Failed to parse request body`;
-		logRequest(req, `${error}`, parsedRequest.issues);
+		logRequest(req, error);
 		res.status(StatusCode.BAD_REQUEST).json({
 			error: parsedRequest.issues,
 		});

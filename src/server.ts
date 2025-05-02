@@ -43,7 +43,7 @@ export async function createServer(
 	const server = app.listen(PORT, () => {
 		console.log(`Server is running on port ${PORT}`);
 		if (!testMode) {
-			console.log(`Configured Cron Jobs`);
+			console.log(`Configuring Cron Jobs`);
 			configureStreakJobs();
 			console.log(`Configured Cron Jobs`);
 		}
