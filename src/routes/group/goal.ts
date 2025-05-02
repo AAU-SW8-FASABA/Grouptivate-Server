@@ -36,7 +36,11 @@ router.post("/", async (req: Request, res: Response) => {
 
 	if (!parsedBody.success) {
 		const error = `Failed to parse input`;
-		logRequest(req, `${error}`, parsedBody.issues);
+		logRequest(
+			req,
+			`${error}`,
+			parsedBody.issues.map((issue) => issue.message),
+		);
 		res.status(StatusCode.INTERNAL_SERVER_ERROR).json({ error });
 		return;
 	}
@@ -99,7 +103,11 @@ router.post("/", async (req: Request, res: Response) => {
 
 	if (!parsedResponse.success) {
 		const error = `Failed to parse response body`;
-		logRequest(req, `${error}`, parsedResponse.issues);
+		logRequest(
+			req,
+			`${error}`,
+			parsedResponse.issues.map((issue) => issue.message),
+		);
 		res.status(StatusCode.INTERNAL_SERVER_ERROR).json({ error });
 		return;
 	}
@@ -116,7 +124,11 @@ router.delete("/", async (req: Request, res: Response) => {
 
 	if (!parsedBody.success) {
 		const error = "Failed to parse request body";
-		logRequest(req, `${error}`, parsedBody.issues);
+		logRequest(
+			req,
+			`${error}`,
+			parsedBody.issues.map((issue) => issue.message),
+		);
 		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
@@ -157,7 +169,11 @@ router.patch("/", async (req: Request, res: Response) => {
 
 	if (!parsedBody.success) {
 		const error = "Failed to parse request body";
-		logRequest(req, `${error}`, parsedBody.issues);
+		logRequest(
+			req,
+			`${error}`,
+			parsedBody.issues.map((issue) => issue.message),
+		);
 		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
