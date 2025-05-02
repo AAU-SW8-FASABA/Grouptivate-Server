@@ -1,6 +1,6 @@
 import express, { type Request, type Response } from "express";
 import cors from "cors";
-import { authMiddleware } from "./middleware";
+import { authMiddleware, cacheMiddleware } from "./middleware";
 
 import { MongoMemoryServer } from "mongodb-memory-server";
 import MG from "mongoose";
@@ -29,6 +29,7 @@ export async function createServer(
 	app.use(cors());
 	app.use(express.json());
 	app.use(authMiddleware);
+	app.use(cacheMiddleware);
 
 	app.get("/", (req: Request, res: Response) => {
 		res.send("Hello to the one and only Grouptivate");
