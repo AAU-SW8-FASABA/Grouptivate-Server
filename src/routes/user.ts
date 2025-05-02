@@ -34,7 +34,7 @@ router.post("/", async (req: Request, res: Response) => {
 
 	if (!parsedBody.success) {
 		const error = `Failed to parse input'`;
-		logRequest(req, `${error} - `, parsedBody.issues);
+		logRequest(req, `${error}`, parsedBody.issues);
 		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
@@ -81,7 +81,7 @@ router.post("/", async (req: Request, res: Response) => {
 
 	if (!parsedResponse.success) {
 		const error = `Failed to parse response body'`;
-		logRequest(req, `${error} - `, parsedResponse.issues);
+		logRequest(req, `${error}`, parsedResponse.issues);
 		res.status(StatusCode.INTERNAL_SERVER_ERROR).json({ error });
 		return;
 	}
@@ -126,7 +126,7 @@ router.get("/", async (req: Request, res: Response) => {
 
 	if (!parsedResponse.success) {
 		const error = `Failed to parse response body`;
-		logRequest(req, `${error} - `, parsedResponse.issues);
+		logRequest(req, `${error}`, parsedResponse.issues);
 		res.status(StatusCode.INTERNAL_SERVER_ERROR).json({ error });
 		return;
 	}
@@ -145,7 +145,7 @@ router.post("/login", async (req: Request, res: Response) => {
 
 	if (!parsedRequest.success) {
 		const error = `Failed to parse request body`;
-		logRequest(req, `${error} - `, parsedRequest.issues);
+		logRequest(req, `${error}`, parsedRequest.issues);
 		res.status(StatusCode.BAD_REQUEST).json({
 			error: parsedRequest.issues,
 		});
@@ -184,7 +184,7 @@ router.post("/login", async (req: Request, res: Response) => {
 
 	if (!parsedResponse.success) {
 		const error = `Failed to parse response body`;
-		logRequest(req, `${error} - `, parsedResponse.issues);
+		logRequest(req, `${error}`, parsedResponse.issues);
 		res.status(StatusCode.INTERNAL_SERVER_ERROR).json({ error });
 		return;
 	}

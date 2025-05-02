@@ -8,5 +8,8 @@ export default function logRequest(req: Request, ...messages: any[]) {
 		}
 		return acc;
 	}, []);
-	console.log(`${req.method} @ ${req.path} - ${req.ip}: `, ...prettyMessages);
+	console.log(
+		`${req.method} @ ${req.path} - ${req.ips[0]}: `,
+		...prettyMessages,
+	);
 }
