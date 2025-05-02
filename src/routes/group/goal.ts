@@ -10,6 +10,7 @@ import GroupModel from "../../models/GroupModel";
 import GoalModel from "../../models/GoalModel";
 import { getParsedSearchParams } from "../../helpers/searchParamHelpers";
 import { StatusCode } from "../../dbEnums";
+import logRequest from "../../helpers/log";
 
 export const router = express.Router();
 
@@ -23,7 +24,7 @@ router.post("/", async (req: Request, res: Response) => {
 
 	if (!parsedParams.groupId.success) {
 		const error = "Request did not include a valid group id";
-		console.log(`'POST' @ '/group/goal': ${error} - `, parsedParams);
+		logRequest(req, `${error} - `, parsedParams);
 		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
@@ -35,7 +36,7 @@ router.post("/", async (req: Request, res: Response) => {
 
 	if (!parsedBody.success) {
 		const error = `Failed to parse input`;
-		console.log(`'POST' @ 'group/goal': `, parsedBody.issues);
+		logRequest(req, `${error} - `, parsedBody.issues);
 		res.status(StatusCode.INTERNAL_SERVER_ERROR).json({ error });
 		return;
 	}
@@ -45,7 +46,7 @@ router.post("/", async (req: Request, res: Response) => {
 		!parsedParams.userId.success
 	) {
 		const error = "Request did not include a user id";
-		console.log(`'POST' @ '/group/goal': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
@@ -55,7 +56,7 @@ router.post("/", async (req: Request, res: Response) => {
 	// Error if group does not exist
 	if (!group) {
 		const error = "Invalid group";
-		console.log(`'POST' @ '/group/goal': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.NOT_FOUND).json({ error });
 		return;
 	}
@@ -63,7 +64,7 @@ router.post("/", async (req: Request, res: Response) => {
 	// Error if user is not in group
 	if (!group.userIds.includes(req.userId)) {
 		const error = "User is not a member of the group";
-		console.log(`'POST' @ '/group/goal': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.FORBIDDEN).json({ error });
 		return;
 	}
@@ -97,8 +98,8 @@ router.post("/", async (req: Request, res: Response) => {
 	});
 
 	if (!parsedResponse.success) {
-		const error = `Failed to parse response body at 'POST' for '/group/goal'`;
-		console.log(error + ": ", parsedResponse.issues);
+		const error = `Failed to parse response body`;
+		logRequest(req, `${error} - `, parsedResponse.issues);
 		res.status(StatusCode.INTERNAL_SERVER_ERROR).json({ error });
 		return;
 	}
@@ -115,7 +116,7 @@ router.delete("/", async (req: Request, res: Response) => {
 
 	if (!parsedBody.success) {
 		const error = "Failed to parse request body";
-		console.log(`'DELETE' @ '/group/goal': ${error}`);
+		logRequest(req, `${error} - `, parsedBody.issues);
 		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
@@ -126,14 +127,14 @@ router.delete("/", async (req: Request, res: Response) => {
 
 	if (!group) {
 		const error = "Failed to find group";
-		console.log(`'DELETE' @ '/group/goal': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.NOT_FOUND).json({ error });
 		return;
 	}
 
 	if (!group.userIds.includes(req.userId)) {
 		const error = "User not in group";
-		console.log(`'DELETE' @ '/group/goal': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.FORBIDDEN).json({ error });
 		return;
 	}
@@ -156,7 +157,7 @@ router.patch("/", async (req: Request, res: Response) => {
 
 	if (!parsedBody.success) {
 		const error = "Failed to parse request body";
-		console.log(`'PATCH' @ '/group/goal': ${error}`);
+		logRequest(req, `${error} - `, parsedBody.issues);
 		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
@@ -173,7 +174,7 @@ router.patch("/", async (req: Request, res: Response) => {
 
 	if (!userIsPartOfAllGroups) {
 		const error = "User is not part of all corresponding groups";
-		console.log(`'PATCH' @ '/group/goal': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.FORBIDDEN).json({ error });
 		return;
 	}
@@ -185,7 +186,7 @@ router.patch("/", async (req: Request, res: Response) => {
 
 	if (goals.length !== goalIds.length) {
 		const error = "List contains invalid goals";
-		console.log(`'PATCH' @ '/group/goal': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.NOT_FOUND).json({ error });
 		return;
 	}
@@ -196,7 +197,7 @@ router.patch("/", async (req: Request, res: Response) => {
 		if (goal.progress.get(req.userId) === undefined) {
 			const error =
 				"User attempted to patch an individual goal that do not belong to them";
-			console.log(`'PATCH' @ '/group/goal': ${error}`);
+			logRequest(req, error);
 			res.status(StatusCode.FORBIDDEN).json({ error });
 			return;
 		}

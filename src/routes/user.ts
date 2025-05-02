@@ -18,6 +18,7 @@ import argon2 from "argon2";
 import crypto from "node:crypto";
 import * as v from "valibot";
 import { StatusCode } from "../dbEnums";
+import logRequest from "../helpers/log";
 
 export const router = express.Router();
 
@@ -32,8 +33,8 @@ router.post("/", async (req: Request, res: Response) => {
 	);
 
 	if (!parsedBody.success) {
-		const error = `Failed to parse input for 'post' request to '/user'`;
-		console.log(error + ": ", parsedBody.issues);
+		const error = `Failed to parse input'`;
+		logRequest(req, `${error} - `, parsedBody.issues);
 		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
@@ -54,8 +55,10 @@ router.post("/", async (req: Request, res: Response) => {
 
 	// If the insert failed, the user already exists
 	if (!insertResult.upsertedId) {
+		const error = "User with this name already exists";
+		logRequest(req, error);
 		res.status(StatusCode.CONFLICT).json({
-			error: "User with this name already exists",
+			error,
 		});
 		return;
 	}
@@ -77,8 +80,8 @@ router.post("/", async (req: Request, res: Response) => {
 	});
 
 	if (!parsedResponse.success) {
-		const error = `Failed to parse response body at 'POST' for '/user'`;
-		console.log(error + ": ", parsedResponse.issues);
+		const error = `Failed to parse response body'`;
+		logRequest(req, `${error} - `, parsedResponse.issues);
 		res.status(StatusCode.INTERNAL_SERVER_ERROR).json({ error });
 		return;
 	}
@@ -93,7 +96,7 @@ router.get("/", async (req: Request, res: Response) => {
 	// Check if a user was found
 	if (!user) {
 		const error = `User not found`;
-		console.log(error);
+		logRequest(req, error);
 		res.status(StatusCode.NOT_FOUND).json({ error });
 		return;
 	}
@@ -122,8 +125,8 @@ router.get("/", async (req: Request, res: Response) => {
 	});
 
 	if (!parsedResponse.success) {
-		const error = `Failed to parse response body at 'GET' for '/user'`;
-		console.log(error + ": ", parsedResponse.issues);
+		const error = `Failed to parse response body`;
+		logRequest(req, `${error} - `, parsedResponse.issues);
 		res.status(StatusCode.INTERNAL_SERVER_ERROR).json({ error });
 		return;
 	}
@@ -141,8 +144,8 @@ router.post("/login", async (req: Request, res: Response) => {
 	const parsedRequest = v.safeParse(LoginRequestSchema.requestBody, req.body);
 
 	if (!parsedRequest.success) {
-		const error = `Failed to parse body for 'POST' at '/login'`;
-		console.log(error + ": ", parsedRequest.issues);
+		const error = `Failed to parse request body`;
+		logRequest(req, `${error} - `, parsedRequest.issues);
 		res.status(StatusCode.BAD_REQUEST).json({
 			error: parsedRequest.issues,
 		});
@@ -157,7 +160,7 @@ router.post("/login", async (req: Request, res: Response) => {
 		!(await argon2.verify(user.password, parsedRequest.output.password))
 	) {
 		const error = "Incorrect login information";
-		console.log(`'POST' @ '/login': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.UNAUTHORIZED).json({ error });
 		return;
 	}
@@ -180,8 +183,8 @@ router.post("/login", async (req: Request, res: Response) => {
 	});
 
 	if (!parsedResponse.success) {
-		const error = `Failed to parse response body at 'POST' for '/login'`;
-		console.log(error + ": ", parsedResponse.issues);
+		const error = `Failed to parse response body`;
+		logRequest(req, `${error} - `, parsedResponse.issues);
 		res.status(StatusCode.INTERNAL_SERVER_ERROR).json({ error });
 		return;
 	}

@@ -6,6 +6,7 @@ import GoalModel from "../models/GoalModel";
 import { GroupsGetRequestSchema } from "../../Grouptivate-API/schemas/Group";
 import { getUserMap } from "../helpers/userHelpers";
 import { StatusCode } from "../dbEnums";
+import logRequest from "../helpers/log";
 
 export const router = express.Router();
 
@@ -23,9 +24,7 @@ router.get("/", async (req: Request, res: Response) => {
 			]);
 
 			if (userMap.size === 0) {
-				console.log(
-					`'GET' @ '/groups': skipping ${group.id} due to no users`,
-				);
+				logRequest(req, "skipping ${group.id} due to no users");
 				return null;
 			}
 
@@ -52,7 +51,7 @@ router.get("/", async (req: Request, res: Response) => {
 
 	if (formattedGroups.some((group) => group === null)) {
 		const error = "One or more groups had 0 users, and are thus invalid";
-		console.log(`'GET' @ '/groups': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.INTERNAL_SERVER_ERROR).json({ error });
 		return;
 	}
@@ -64,7 +63,7 @@ router.get("/", async (req: Request, res: Response) => {
 
 	if (!parsedResponse.success) {
 		const error = "Unable to parse response";
-		console.log(`'GET' @ '/groups': ${error} - `, parsedResponse.issues);
+		logRequest(req, `${error} - `, parsedResponse.issues);
 		res.status(StatusCode.INTERNAL_SERVER_ERROR).json({ error });
 		return;
 	}
