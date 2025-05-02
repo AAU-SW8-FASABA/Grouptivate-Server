@@ -39,4 +39,4 @@ export const authMiddleware: RequestHandler = async (req, res, next) => {
 export const cacheMiddleware: RequestHandler = async (req, res, next) => {
 	res.set("Cache-Control", ["private"]);
 	next();
-}
+};
