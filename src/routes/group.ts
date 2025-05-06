@@ -19,13 +19,12 @@ import { getUserMap, getUserIdByName } from "../helpers/userHelpers";
 import { GoalType } from "../../Grouptivate-API/schemas/Goal";
 import { StatusCode } from "../dbEnums";
 import logRequest from "../helpers/log";
+import InviteModel from "../models/InviteModel";
 
 export const router = express.Router();
 
 router.use("/invite", inviteRouter);
 router.use("/goal", goalRouter);
-
-// TODO: Increment streak
 
 router.post("/", async (req: Request, res: Response) => {
 	const parsedBody = v.safeParse(
@@ -202,6 +201,7 @@ router.post("/remove", async (req: Request, res: Response) => {
 		await Promise.all([
 			GoalModel.deleteMany({ _id: { $in: group.goalIds } }),
 			GroupModel.findByIdAndDelete(group._id),
+			InviteModel.deleteMany({ groupId: group.id }),
 		]);
 	} else {
 		const goals = await GoalModel.find({

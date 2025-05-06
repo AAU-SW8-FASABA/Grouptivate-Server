@@ -23,8 +23,10 @@ import {
 	createGoal,
 	createGroup,
 	createUser,
+	invite,
 	inviteAcceptFlow,
 } from "./helpers";
+import InviteModel from "../src/models/InviteModel";
 
 before(async () => {
 	await start();
@@ -357,7 +359,7 @@ test("GET @ group: can not get invalid group", async (t) => {
 /**
  * These tests, check whether removing users correctly adjusts the user, goal and group collections
  */
-test("POST @ group/remove: remove user from group with one user", async (t) => {
+test("POST @ group/remove: remove user from group with one user and deletes group", async (t) => {
 	const user = await createUser(t);
 	if (!user) return;
 
@@ -449,7 +451,7 @@ test("POST @ group/remove: remove user from group with one user. Correctly delet
 	assert(goalsNumber === 0, "The goal should have been deleted");
 });
 
-test("POST @ group/remove: remove user from group with one user. Correctly deletes group goal", async (t) => {
+test("POST @ group/remove: remove user from group with one user. Correctly deletes group goal and group", async (t) => {
 	const user = await createUser(t);
 	if (!user) return;
 
@@ -747,5 +749,42 @@ test("POST @ group/remove: remove user from group with multiple users. Correctly
 	assert(
 		goals[0].progress.size === 1,
 		"The progress of the group goal should only contain a single user",
+	);
+});
+
+test("POST @ group/remove: if last member leaves, deletes invitations to deleted group", async (t) => {
+	const user1 = await createUser(t, "user1");
+	if (!user1) return;
+
+	const user2 = await createUser(t, "user2");
+	if (!user2) return;
+
+	const group = await createGroup(t, user1.token);
+	if (!group) return;
+
+	const inviteResponse = await invite(t, user2, user1, group.groupId);
+
+	const [removeUserResponse, _] = await fetchApi({
+		path: "/group/remove",
+		method: RequestMethod.POST,
+		schema: GroupRemoveRequestSchema,
+		token: user1.token,
+		searchParams: {},
+		requestBody: {
+			userId: user1.userId,
+			groupId: group.groupId,
+		},
+	});
+
+	assert(
+		removeUserResponse.status === StatusCode.OK,
+		"Incorrect status code",
+	);
+
+	const invites = await InviteModel.countDocuments();
+
+	assert(
+		invites === 0,
+		"Removing the last user from a group should delete the group and thus delete any invites to that group",
 	);
 });
