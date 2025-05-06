@@ -24,7 +24,7 @@ router.get("/", async (req: Request, res: Response) => {
 			]);
 
 			if (userMap.size === 0) {
-				logRequest(req, "skipping ${group.id} due to no users");
+				logRequest(req, `skipping ${group.id} due to no users`);
 				return null;
 			}
 
