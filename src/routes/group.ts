@@ -18,13 +18,13 @@ import { getParsedSearchParams } from "../helpers/searchParamHelpers";
 import { getUserMap, getUserIdByName } from "../helpers/userHelpers";
 import { GoalType } from "../../Grouptivate-API/schemas/Goal";
 import { StatusCode } from "../dbEnums";
+import logRequest from "../helpers/log";
+import InviteModel from "../models/InviteModel";
 
 export const router = express.Router();
 
 router.use("/invite", inviteRouter);
 router.use("/goal", goalRouter);
-
-// TODO: Increment streak
 
 router.post("/", async (req: Request, res: Response) => {
 	const parsedBody = v.safeParse(
@@ -34,7 +34,11 @@ router.post("/", async (req: Request, res: Response) => {
 
 	if (!parsedBody.success) {
 		const error = "Unable to parse the request body";
-		console.log(`'POST' @ '/group': ${error}`);
+		logRequest(
+			req,
+			`${error}`,
+			parsedBody.issues.map((issue) => issue.message),
+		);
 		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
@@ -61,7 +65,11 @@ router.post("/", async (req: Request, res: Response) => {
 
 	if (!parsedResponse.success) {
 		const error = "Unable to parse response body";
-		console.log(`'POST' @ '/group': ${error} - `, parsedResponse.issues);
+		logRequest(
+			req,
+			`${error}`,
+			parsedResponse.issues.map((issue) => issue.message),
+		);
 		res.status(StatusCode.INTERNAL_SERVER_ERROR).json({ error });
 		return;
 	}
@@ -78,7 +86,7 @@ router.get("/", async (req: Request, res: Response) => {
 
 	if (!parsedParams.groupId.success) {
 		const error = "Request did not include a valid groupId";
-		console.log(`'GET' @ '/group': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
@@ -88,7 +96,7 @@ router.get("/", async (req: Request, res: Response) => {
 	// Error if group does not exist
 	if (!group) {
 		const error = "Invalid group";
-		console.log(`'GET' @ '/group': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.NOT_FOUND).json({ error });
 		return;
 	}
@@ -96,7 +104,7 @@ router.get("/", async (req: Request, res: Response) => {
 	// Error if user is not in group
 	if (!group.userIds.includes(req.userId)) {
 		const error = "User is not a member of the group";
-		console.log(`'GET' @ '/group': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.FORBIDDEN).json({ error });
 		return;
 	}
@@ -109,7 +117,7 @@ router.get("/", async (req: Request, res: Response) => {
 	const userMap = await getUserMap(group.userIds);
 	if (userMap.size === 0) {
 		const error = "User IDs do not exist in this group";
-		console.log(`'GET' @ '/group': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.INTERNAL_SERVER_ERROR).json({ error });
 		return;
 	}
@@ -135,7 +143,11 @@ router.get("/", async (req: Request, res: Response) => {
 
 	if (!parsedResponse.success) {
 		const error = "Unable to parse response";
-		console.log(`'GET' @ '/group': ${error} - `, parsedResponse.issues);
+		logRequest(
+			req,
+			`${error}`,
+			parsedResponse.issues.map((issue) => issue.message),
+		);
 		res.status(StatusCode.INTERNAL_SERVER_ERROR).json({ error });
 		return;
 	}
@@ -153,7 +165,7 @@ router.post("/remove", async (req: Request, res: Response) => {
 
 	if (!parsedBody.success) {
 		const error = "Unable to parse the request body";
-		console.log(`'POST' @ '/group/remove': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
@@ -162,14 +174,14 @@ router.post("/remove", async (req: Request, res: Response) => {
 
 	if (!group) {
 		const error = "Group does not exist";
-		console.log(`'POST' @ '/group/remove': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.NOT_FOUND).json({ error });
 		return;
 	}
 
 	if (!group.userIds.includes(req.userId)) {
 		const error = "Requesting user is not a member of this group";
-		console.log(`'POST' @ '/group/remove': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.FORBIDDEN).json({ error });
 		return;
 	}
@@ -189,6 +201,7 @@ router.post("/remove", async (req: Request, res: Response) => {
 		await Promise.all([
 			GoalModel.deleteMany({ _id: { $in: group.goalIds } }),
 			GroupModel.findByIdAndDelete(group._id),
+			InviteModel.deleteMany({ groupId: group.id }),
 		]);
 	} else {
 		const goals = await GoalModel.find({

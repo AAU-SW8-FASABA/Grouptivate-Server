@@ -18,6 +18,7 @@ import { getParsedSearchParams } from "../../helpers/searchParamHelpers";
 import UserModel from "../../models/UserModel";
 import GoalModel from "../../models/GoalModel";
 import { StatusCode } from "../../dbEnums";
+import logRequest from "../../helpers/log";
 
 export const router = express.Router();
 
@@ -31,7 +32,11 @@ router.post("/", async (req: Request, res: Response) => {
 
 	if (!parsedBody.success) {
 		const error = "Unable to parse the request body";
-		console.log(`'POST' @ '/group/invite': ${error}`);
+		logRequest(
+			req,
+			`${error}`,
+			parsedBody.issues.map((issue) => issue.message),
+		);
 		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
@@ -41,7 +46,7 @@ router.post("/", async (req: Request, res: Response) => {
 	// Error if group does not exist
 	if (!group) {
 		const error = "Invalid group";
-		console.log(`'POST' @ '/group/invite': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.NOT_FOUND).json({ error });
 		return;
 	}
@@ -49,7 +54,7 @@ router.post("/", async (req: Request, res: Response) => {
 	// Error if user is not in group
 	if (!group.userIds.includes(req.userId)) {
 		const error = "User is not a member of the group";
-		console.log(`'POST' @ '/group/invite': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.FORBIDDEN).json({ error });
 		return;
 	}
@@ -58,7 +63,7 @@ router.post("/", async (req: Request, res: Response) => {
 
 	if (!inviteeId) {
 		const error = "This user does not exist";
-		console.log(`'POST' @ '/group/invite': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.NOT_FOUND).json({ error });
 		return;
 	}
@@ -70,7 +75,7 @@ router.post("/", async (req: Request, res: Response) => {
 
 	if (invite) {
 		const error = "This user is already invited to this group";
-		console.log(`'POST' @ '/group/invite': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.CONFLICT).json({ error });
 		return;
 	}
@@ -105,9 +110,10 @@ router.get("/", async (req: Request, res: Response) => {
 
 	if (!parsedResponse.success) {
 		const error = "Unable to parse response";
-		console.log(
-			`'GET' @ '/group/invite': ${error} - `,
-			parsedResponse.issues,
+		logRequest(
+			req,
+			`${error}`,
+			parsedResponse.issues.map((issue) => issue.message),
 		);
 		res.status(StatusCode.INTERNAL_SERVER_ERROR).json({ error });
 		return;
@@ -125,7 +131,7 @@ router.delete("/", async (req: Request, res: Response) => {
 
 	if (!parsedSearchParams.inviteId.success) {
 		const error = "Request did not include a valid invite id";
-		console.log(`'DELETE' @ '/group/invite/respond': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.NOT_FOUND).json({ error });
 		return;
 	}
@@ -136,7 +142,7 @@ router.delete("/", async (req: Request, res: Response) => {
 
 	if (!invite) {
 		const error = "Invalid invite";
-		console.log(`'DELETE' @ '/group/invite': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.NOT_FOUND).json({ error });
 		return;
 	}
@@ -146,7 +152,7 @@ router.delete("/", async (req: Request, res: Response) => {
 	// Error if group does not exist
 	if (!group) {
 		const error = "Invalid group";
-		console.log(`'DELETE' @ '/group/invite': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.NOT_FOUND).json({ error });
 		return;
 	}
@@ -154,7 +160,7 @@ router.delete("/", async (req: Request, res: Response) => {
 	// Error if user is not in group
 	if (!group.userIds.includes(req.userId)) {
 		const error = "User is not a member of the group";
-		console.log(`'DELETE' @ '/group/invite': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.FORBIDDEN).json({ error });
 		return;
 	}
@@ -174,7 +180,7 @@ router.post("/respond", async (req: Request, res: Response) => {
 
 	if (!parsedParams.inviteId.success) {
 		const error = "Request did not include an invite id";
-		console.log(`'GET' @ '/group/invite/respond': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
@@ -186,7 +192,11 @@ router.post("/respond", async (req: Request, res: Response) => {
 
 	if (!parsedBody.success) {
 		const error = "Unable to parse the request body";
-		console.log(`'POST' @ '/group/invite/respond': ${error}`);
+		logRequest(
+			req,
+			`${error}`,
+			parsedBody.issues.map((issue) => issue.message),
+		);
 		res.status(StatusCode.BAD_REQUEST).json({ error });
 		return;
 	}
@@ -195,14 +205,14 @@ router.post("/respond", async (req: Request, res: Response) => {
 
 	if (!invite) {
 		const error = "Invite does not exist";
-		console.log(`'POST' @ '/group/invite/respond': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.NOT_FOUND).json({ error });
 		return;
 	}
 
 	if (invite.inviteeId !== req.userId) {
 		const error = "Invite is not for this user";
-		console.log(`'POST' @ '/group/invite/respond': ${error}`);
+		logRequest(req, error);
 		res.status(StatusCode.FORBIDDEN).json({ error });
 		return;
 	}
@@ -213,7 +223,7 @@ router.post("/respond", async (req: Request, res: Response) => {
 
 		if (!group) {
 			const error = "Group does not exist";
-			console.log(`'POST' @ '/group/invite/respond': ${error}`);
+			logRequest(req, error);
 			res.status(StatusCode.NOT_FOUND).json({ error });
 			return;
 		}
@@ -222,7 +232,7 @@ router.post("/respond", async (req: Request, res: Response) => {
 
 		if (!user) {
 			const error = "User does not exist";
-			console.log(`'POST' @ '/group/invite/respond': ${error}`);
+			logRequest(req, error);
 			res.status(StatusCode.NOT_FOUND).json({ error });
 			return;
 		}

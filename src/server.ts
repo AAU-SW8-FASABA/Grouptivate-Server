@@ -31,6 +31,8 @@ export async function createServer(
 	app.use(authMiddleware);
 	app.use(cacheMiddleware);
 
+	app.set("trust proxy", true);
+
 	app.get("/", (req: Request, res: Response) => {
 		res.send("Hello to the one and only Grouptivate");
 	});
@@ -43,6 +45,7 @@ export async function createServer(
 		if (!testMode) {
 			console.log(`Configuring Cron Jobs`);
 			configureStreakJobs();
+			console.log(`Configured Cron Jobs`);
 		}
 	});
 
