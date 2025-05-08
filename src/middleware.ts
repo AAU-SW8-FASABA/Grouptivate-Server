@@ -40,3 +40,10 @@ export const cacheMiddleware: RequestHandler = async (req, res, next) => {
 	res.set("Cache-Control", ["private"]);
 	next();
 };
+
+export const logMiddleware: RequestHandler = (req, res, next) => {
+	console.log(
+		`📭 [${new Date(Date.now()).toLocaleString()}] ${req.method} @ ${req.originalUrl} - ${req.ip}:`,
+	);
+	next();
+};

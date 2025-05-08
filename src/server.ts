@@ -1,6 +1,6 @@
 import express, { type Request, type Response } from "express";
 import cors from "cors";
-import { authMiddleware, cacheMiddleware } from "./middleware";
+import { logMiddleware, authMiddleware, cacheMiddleware } from "./middleware";
 
 import { MongoMemoryServer } from "mongodb-memory-server";
 import MG from "mongoose";
@@ -26,6 +26,7 @@ export async function createServer(
 	const app = express();
 	const PORT = process.env.PORT || 3000;
 
+	app.use(logMiddleware);
 	app.use(cors());
 	app.use(express.json());
 	app.use(authMiddleware);
