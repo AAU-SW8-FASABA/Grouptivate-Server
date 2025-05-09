@@ -1,6 +1,7 @@
 import type { RequestHandler } from "express";
 import SessionModel from "./models/SessionModel";
 import { StatusCode } from "./dbEnums";
+import process from "node:process";
 
 export const authMiddleware: RequestHandler = async (req, res, next) => {
 	if (
@@ -43,7 +44,7 @@ export const cacheMiddleware: RequestHandler = async (req, res, next) => {
 
 export const logMiddleware: RequestHandler = (req, res, next) => {
 	console.log(
-		`📭 [${new Date(Date.now()).toLocaleString()}] ${req.method} @ ${req.originalUrl} - ${req.ip}:`,
+		`📭 [${new Date(Date.now()).toLocaleString()} - ${process.pid}] ${req.method} @ ${req.originalUrl} - ${req.ip}:`,
 	);
 	next();
 };
