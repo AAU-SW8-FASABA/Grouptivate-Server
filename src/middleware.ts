@@ -7,7 +7,7 @@ export const authMiddleware: RequestHandler = async (req, res, next) => {
 	if (
 		[
 			{ path: "/", method: "GET" },
-			{ path: "/favicon.ico", method: "GET" },
+			{ path: "/", method: "HEAD" },
 			{ path: "/user", method: "POST" },
 			{ path: "/user/login", method: "POST" },
 		].some(
