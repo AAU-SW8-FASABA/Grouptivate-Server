@@ -37,6 +37,9 @@ export async function createServer(
 	app.get("/", (req: Request, res: Response) => {
 		res.status(200).send("Hello to the one and only Grouptivate");
 	});
+	app.head("/", (req: Request, res: Response) => {
+		res.sendStatus(200);
+	});
 	app.use("/user", userRouter);
 	app.use("/group", groupRouter);
 	app.use("/groups", groupsRouter);
