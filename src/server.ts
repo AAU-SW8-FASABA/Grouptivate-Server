@@ -35,7 +35,7 @@ export async function createServer(
 	app.set("trust proxy", true);
 
 	app.get("/", (req: Request, res: Response) => {
-		res.send("Hello to the one and only Grouptivate");
+		res.status(200).send("Hello to the one and only Grouptivate");
 	});
 	app.use("/user", userRouter);
 	app.use("/group", groupRouter);
