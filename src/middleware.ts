@@ -2,13 +2,7 @@ import type { RequestHandler } from "express";
 import SessionModel from "./models/SessionModel";
 import { StatusCode } from "./dbEnums";
 import cluster from "node:cluster";
-import winston, { format } from "winston";
-
-const logger = winston.createLogger({
-	level: "info",
-	format: format.printf(({ message }) => String(message)),
-	transports: [new winston.transports.File({ filename: "requests.log" })],
-});
+import { logger } from "./helpers/log";
 
 export const authMiddleware: RequestHandler = async (req, res, next) => {
 	if (
@@ -51,9 +45,6 @@ export const cacheMiddleware: RequestHandler = async (req, res, next) => {
 };
 
 export const logMiddleware: RequestHandler = (req, res, next) => {
-	console.log(
-		`📭 [${new Date(Date.now()).toLocaleString()} - ${cluster.isWorker ? cluster.worker?.id : 0}] ${req.method} @ ${req.originalUrl} - ${req.ip}:`,
-	);
 	logger.info(
 		`📭 [${new Date(Date.now()).toLocaleString()} - ${cluster.isWorker ? cluster.worker?.id : 0}] ${req.method} @ ${req.originalUrl} - ${req.ip}:`,
 	);
