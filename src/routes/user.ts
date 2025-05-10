@@ -165,7 +165,9 @@ router.post("/login", async (req: Request, res: Response) => {
 			parsedRequest.issues.map((issue) => issue.message),
 		);
 		res.status(StatusCode.BAD_REQUEST).json({
-			error: parsedRequest.issues.map((issue) => issue.message),
+			error: parsedRequest.issues
+				.map((issue) => issue.message)
+				.join(", "),
 		});
 		return;
 	}
