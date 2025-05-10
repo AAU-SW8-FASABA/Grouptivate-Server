@@ -2,6 +2,7 @@ node_modules
 Grouptivate-API
 build
 .env
+log
 
 ### macOS Patch ###
 # General

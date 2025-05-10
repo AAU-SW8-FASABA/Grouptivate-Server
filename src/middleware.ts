@@ -2,6 +2,7 @@ import type { RequestHandler } from "express";
 import SessionModel from "./models/SessionModel";
 import { StatusCode } from "./dbEnums";
 import cluster from "node:cluster";
+import { logger } from "./helpers/log";
 
 export const authMiddleware: RequestHandler = async (req, res, next) => {
 	if (
@@ -44,7 +45,7 @@ export const cacheMiddleware: RequestHandler = async (req, res, next) => {
 };
 
 export const logMiddleware: RequestHandler = (req, res, next) => {
-	console.log(
+	logger.info(
 		`📭 [${new Date(Date.now()).toLocaleString()} - ${cluster.isWorker ? cluster.worker?.id : 0}] ${req.method} @ ${req.originalUrl} - ${req.ip}:`,
 	);
 	next();
